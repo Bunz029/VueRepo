@@ -72,7 +72,7 @@ export default {
         formData.append('is_active', '0') // Not active by default
         
         // Upload to backend
-        await axios.post('http://localhost:8000/api/map', formData, {
+        await axios.post('https://web-production-23886.up.railway.app/api/map', formData, {
           headers: {
             'Content-Type': 'multipart/form-data'
           }

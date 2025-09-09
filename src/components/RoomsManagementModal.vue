@@ -321,12 +321,12 @@ export default {
 
     getThumbnailUrl(path) {
       if (!path) return null
-      return `http://localhost:8000/storage/${path}`
+      return `https://web-production-23886.up.railway.app/storage/${path}`
     },
 
     getPanoramaUrl(path) {
       if (!path) return null
-      return `http://localhost:8000/storage/${path}`
+      return `https://web-production-23886.up.railway.app/storage/${path}`
     }
   }
 }

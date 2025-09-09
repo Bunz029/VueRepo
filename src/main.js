@@ -4,7 +4,7 @@ import router from './router'
 import axios from 'axios'
 
 // Configure axios
-axios.defaults.baseURL = 'https://laravelrepo-production.up.railway.app/api'
+axios.defaults.baseURL = 'https://web-production-23886.up.railway.app/api'
 axios.defaults.headers.common['Accept'] = 'application/json'
 axios.defaults.withCredentials = true
 
