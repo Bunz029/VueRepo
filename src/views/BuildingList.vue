@@ -165,7 +165,7 @@ export default {
   methods: {
     async fetchBuildings() {
       try {
-        const response = await axios.get('/api/buildings')
+        const response = await axios.get('/buildings')
         this.buildings = response.data
       } catch (error) {
         console.error('Error fetching buildings:', error)
@@ -173,7 +173,7 @@ export default {
     },
     async fetchMaps() {
       try {
-        const response = await axios.get('/api/maps')
+        const response = await axios.get('/maps')
         this.maps = response.data
       } catch (error) {
         console.error('Error fetching maps:', error)
@@ -217,7 +217,7 @@ export default {
       if (!this.buildingToDelete) return
       
       try {
-        await axios.delete(`/api/buildings/${this.buildingToDelete.id}`)
+        await axios.delete(`/buildings/${this.buildingToDelete.id}`)
         await this.fetchBuildings()
         this.closeDeleteModal()
       } catch (error) {
@@ -227,7 +227,7 @@ export default {
     },
     async toggleBuildingStatus(building) {
       try {
-        await axios.put(`/api/buildings/${building.id}/toggle-status`)
+        await axios.put(`/buildings/${building.id}/toggle-status`)
         await this.fetchBuildings()
       } catch (error) {
         console.error('Error toggling building status:', error)
@@ -246,9 +246,9 @@ export default {
 
       try {
         if (this.editingBuilding) {
-          await axios.put(`/api/buildings/${this.editingBuilding.id}`, formData)
+          await axios.put(`/buildings/${this.editingBuilding.id}`, formData)
         } else {
-          await axios.post('/api/buildings', formData)
+          await axios.post('/buildings', formData)
         }
         await this.fetchBuildings()
         this.closeModal()

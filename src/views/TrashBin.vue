@@ -240,7 +240,7 @@ export default {
     async fetchDeletedItems() {
       try {
         this.loading = true
-        const response = await axios.get('/api/trash/')
+        const response = await axios.get('/trash/')
         this.deletedItems = [...response.data.buildings, ...response.data.maps]
       } catch (error) {
         console.error('Error fetching deleted items:', error)
@@ -250,7 +250,7 @@ export default {
     },
     async fetchMaps() {
       try {
-        const response = await axios.get('/api/map/')
+        const response = await axios.get('/map/')
         this.maps = response.data
       } catch (error) {
         console.error('Error fetching maps:', error)
@@ -284,7 +284,7 @@ export default {
       if (!this.itemToRestore) return
       
       try {
-        await axios.post(`/api/trash/${this.itemToRestore.id}/restore`)
+        await axios.post(`/trash/${this.itemToRestore.id}/restore`)
         await this.fetchDeletedItems()
         this.closeRestoreModal()
         // Show success message
@@ -306,7 +306,7 @@ export default {
       if (!this.itemToPermanentDelete) return
       
       try {
-        await axios.delete(`/api/trash/${this.itemToPermanentDelete.id}/permanent`)
+        await axios.delete(`/trash/${this.itemToPermanentDelete.id}/permanent`)
         await this.fetchDeletedItems()
         this.closePermanentDeleteModal()
         this.$emit('show-toast', 'success', 'Permanently Deleted', 'Item has been permanently deleted.')
@@ -320,7 +320,7 @@ export default {
     },
     async confirmEmptyTrash() {
       try {
-        await axios.delete('/api/trash/empty')
+        await axios.delete('/trash/empty')
         await this.fetchDeletedItems()
         this.closeEmptyTrashModal()
         this.$emit('show-toast', 'success', 'Trash Emptied', 'All items have been permanently deleted.')

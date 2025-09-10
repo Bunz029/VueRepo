@@ -49,7 +49,7 @@ export default {
   },
   async created() {
     try {
-      const response = await axios.get('/api/stats')
+      const response = await axios.get('/stats')
       this.stats = response.data
     } catch (error) {
       console.error('Error fetching stats:', error)
