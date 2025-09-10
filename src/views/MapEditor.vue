@@ -1686,7 +1686,7 @@ export default {
     
     async setActiveMap(id) {
       try {
-        await axios.put(`/api/map/${id}/activate`)
+        await axios.put(`/map/${id}/activate`)
         await this.fetchMaps()
         // Update unpublished count after map activation change
         this.fetchUnpublishedCount()
@@ -1725,7 +1725,7 @@ export default {
 
         if (this.editingMap) {
           // Update existing map
-          await axios.post(`/api/map/${this.editingMap.id}?_method=PUT`, formData, {
+          await axios.post(`/map/${this.editingMap.id}?_method=PUT`, formData, {
             headers: { 'Content-Type': 'multipart/form-data' }
           })
           
@@ -1736,7 +1736,7 @@ export default {
           this.fetchUnpublishedCount()
         } else {
                   // Create new map
-        await axios.post('/api/map', formData, {
+        await axios.post('/map', formData, {
           headers: { 'Content-Type': 'multipart/form-data' }
         })
         
@@ -1805,7 +1805,7 @@ export default {
         formData.append('image', file)
         
         
-        await axios.post('/api/buildings/upload', formData, {
+        await axios.post('/buildings/upload', formData, {
           headers: { 'Content-Type': 'multipart/form-data' }
         })
         
@@ -1823,7 +1823,7 @@ export default {
       
       // 2. Make a fresh API call to compare with local data
       try {
-        const response = await axios.get('/api/buildings')
+        const response = await axios.get('/buildings')
         const freshBuildings = response.data || []
         
         
@@ -1872,7 +1872,7 @@ export default {
             // Attempt the PUT request
             await axios({
               method: 'put',
-              url: `/api/buildings/${testBuilding.id}`,
+              url: `/buildings/${testBuilding.id}`,
               data: formData,
               headers: { 'Content-Type': 'multipart/form-data' }
             })
@@ -2215,7 +2215,7 @@ export default {
     // Publication/Push Update methods
     async fetchUnpublishedCount() {
       try {
-        const response = await axios.get('/api/publish/status')
+        const response = await axios.get('/publish/status')
         this.unpublishedCount = response.data.unpublished.total
       } catch (error) {
         console.error('Error fetching unpublished count:', error)
@@ -2291,7 +2291,7 @@ export default {
       }
       
       try {
-        const response = await axios.post('/api/publish/all')
+        const response = await axios.post('/publish/all')
         this.$refs.toast.success('Updates Pushed', `Successfully published ${response.data.total_published} items to the app.`)
         this.unpublishedCount = 0
       } catch (error) {

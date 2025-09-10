@@ -166,7 +166,7 @@ export default {
     async loadActivityLogs() {
       try {
         this.loading = true
-        const response = await axios.get('/api/activity-logs')
+        const response = await axios.get('/activity-logs')
         this.activityLogs = response.data
       } catch (error) {
         console.error('Error loading activity logs:', error)

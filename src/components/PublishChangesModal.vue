@@ -775,7 +775,7 @@ export default {
     },
     async loadPendingChanges() {
       try {
-        const response = await axios.get('/api/publish/unpublished')
+        const response = await axios.get('/publish/unpublished')
         this.categorizeChanges(response.data)
       } catch (error) {
         console.error('Error loading pending changes:', error)
@@ -870,7 +870,7 @@ export default {
 
       this.isPublishing = true
       try {
-        const response = await axios.post('/api/publish/all')
+        const response = await axios.post('/publish/all')
         this.$emit('success', response.data)
       } catch (error) {
         console.error('Error publishing changes:', error)
@@ -887,7 +887,7 @@ export default {
         'Are you sure you want to permanently delete this building? This action cannot be undone.',
         async () => {
           try {
-            await axios.delete(`/api/buildings/${buildingId}`)
+            await axios.delete(`/buildings/${buildingId}`)
             this.$emit('change-processed', { type: 'building-deleted', id: buildingId })
             this.loadPendingChanges() // Refresh the changes list
           } catch (error) {
@@ -921,7 +921,7 @@ export default {
         'Are you sure you want to undo the restore and delete this building again?',
         async () => {
           try {
-            await axios.delete(`/api/buildings/${buildingId}`)
+            await axios.delete(`/buildings/${buildingId}`)
             this.$emit('change-processed', { type: 'building-deleted', id: buildingId })
             this.loadPendingChanges() // Refresh the changes list
           } catch (error) {
