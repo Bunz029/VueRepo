@@ -904,7 +904,7 @@ export default {
     async restoreBuilding(buildingId) {
       try {
         // For buildings marked for deletion, we need to unmark the pending_deletion flag
-        await axios.put(`/api/buildings/${buildingId}`, {
+        await axios.put(`/buildings/${buildingId}`, {
           pending_deletion: false
         })
         this.$emit('change-processed', { type: 'building-restored', id: buildingId })
@@ -941,7 +941,7 @@ export default {
         'Are you sure you want to revert all changes to this building? This will restore it to its last published state.',
         async () => {
           try {
-            await axios.post(`/api/publish/revert/building/${buildingId}`)
+            await axios.post(`/publish/revert/building/${buildingId}`)
             this.$emit('change-processed', { type: 'building-reverted', id: buildingId })
             this.loadPendingChanges() // Refresh the changes list
           } catch (error) {
@@ -957,7 +957,7 @@ export default {
     
     async confirmDeleteBuilding(buildingId) {
       try {
-        await axios.post(`/api/publish/building/${buildingId}`)
+        await axios.post(`/publish/building/${buildingId}`)
         this.$emit('change-processed', { type: 'building-deletion-published', id: buildingId })
         this.loadPendingChanges() // Refresh the changes list
       } catch (error) {
@@ -968,7 +968,7 @@ export default {
     
     async publishBuilding(buildingId) {
       try {
-        await axios.post(`/api/publish/building/${buildingId}`)
+        await axios.post(`/publish/building/${buildingId}`)
         this.$emit('change-processed', { type: 'building-published', id: buildingId })
         this.loadPendingChanges() // Refresh the changes list
       } catch (error) {
@@ -983,7 +983,7 @@ export default {
         'Are you sure you want to revert all changes to this map? This will restore it to its last published state.',
         async () => {
           try {
-            await axios.post(`/api/publish/revert/map/${mapId}`)
+            await axios.post(`/publish/revert/map/${mapId}`)
             this.$emit('change-processed', { type: 'map-reverted', id: mapId })
             this.loadPendingChanges() // Refresh the changes list
           } catch (error) {
@@ -999,7 +999,7 @@ export default {
     
     async publishMapChange(mapId) {
       try {
-        await axios.post(`/api/publish/map/${mapId}`)
+        await axios.post(`/publish/map/${mapId}`)
         this.$emit('change-processed', { type: 'map-published', id: mapId })
         this.loadPendingChanges() // Refresh the changes list
       } catch (error) {
@@ -1010,7 +1010,7 @@ export default {
     
     async publishRoom(roomId) {
       try {
-        await axios.post(`/api/publish/room/${roomId}`)
+        await axios.post(`/publish/room/${roomId}`)
         this.$emit('change-processed', { type: 'room-published', id: roomId })
         this.loadPendingChanges() // Refresh the changes list
         this.$emit('show-toast', 'Room Published', 'Room has been published successfully', 'success')
@@ -1027,7 +1027,7 @@ export default {
         'Are you sure you want to revert this room? This will restore it to its last published state, or delete it if it was never published.',
         async () => {
           try {
-            const response = await axios.post(`/api/publish/revert/room/${roomId}`)
+            const response = await axios.post(`/publish/revert/room/${roomId}`)
             const action = response.data.action || 'reverted'
             
             if (action === 'deleted') {
