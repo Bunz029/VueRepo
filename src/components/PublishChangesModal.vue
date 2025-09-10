@@ -244,7 +244,7 @@
                       <div class="property-list">
                         <div class="property-item">
                           <span class="property-label">Name:</span>
-                          <span class="property-value">{{ item.building_name }}</span>
+                          <span class="property-value">{{ item.building_name || item.name }}</span>
                         </div>
                         <div class="property-item" v-if="item.description">
                           <span class="property-label">Description:</span>
