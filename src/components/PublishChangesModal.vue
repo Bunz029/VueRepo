@@ -582,6 +582,13 @@
                       ↩️
                     </button>
                     <button 
+                      @click="deleteMapChange(change.id)" 
+                      class="action-btn delete-btn"
+                      title="Delete Map"
+                    >
+                      🗑️
+                    </button>
+                    <button 
                       @click="publishMapChange(change.id)" 
                       class="action-btn publish-btn"
                       title="Publish This Map Change"
@@ -1045,6 +1052,26 @@ export default {
         },
         'warning',
         'Revert',
+        'Cancel'
+      )
+    },
+    
+    async deleteMapChange(mapId) {
+      this.showConfirmation(
+        'Delete Map',
+        'Are you sure you want to permanently delete this map? This action cannot be undone.',
+        async () => {
+          try {
+            await axios.delete(`/map/${mapId}`)
+            this.$emit('change-processed', { type: 'map-deleted', id: mapId })
+            this.loadPendingChanges() // Refresh the changes list
+          } catch (error) {
+            console.error('Error deleting map:', error)
+            this.$emit('error', 'Failed to delete map')
+          }
+        },
+        'danger',
+        'Delete Map',
         'Cancel'
       )
     },
