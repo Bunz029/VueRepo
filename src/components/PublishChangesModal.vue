@@ -965,14 +965,23 @@ export default {
     },
     
     async confirmDeleteBuilding(buildingId) {
-      try {
-        await axios.post(`/publish/building/${buildingId}`)
-        this.$emit('change-processed', { type: 'building-deletion-published', id: buildingId })
-        this.loadPendingChanges() // Refresh the changes list
-      } catch (error) {
-        console.error('Error confirming building deletion:', error)
-        this.$emit('error', 'Failed to confirm building deletion')
-      }
+      this.showConfirmation(
+        'Confirm Building Deletion',
+        'Are you sure you want to permanently delete this building? This action cannot be undone and will remove the building from the app.',
+        async () => {
+          try {
+            await axios.post(`/publish/building/${buildingId}`)
+            this.$emit('change-processed', { type: 'building-deletion-published', id: buildingId })
+            this.loadPendingChanges() // Refresh the changes list
+          } catch (error) {
+            console.error('Error confirming building deletion:', error)
+            this.$emit('error', 'Failed to confirm building deletion')
+          }
+        },
+        'danger',
+        'Delete Building',
+        'Cancel'
+      )
     },
     
     async publishBuilding(buildingId) {
@@ -1001,14 +1010,23 @@ export default {
     },
     
     async confirmDeleteMap(mapId) {
-      try {
-        await axios.post(`/publish/map/${mapId}`)
-        this.$emit('change-processed', { type: 'map-deletion-published', id: mapId })
-        this.loadPendingChanges() // Refresh the changes list
-      } catch (error) {
-        console.error('Error confirming map deletion:', error)
-        this.$emit('error', 'Failed to confirm map deletion')
-      }
+      this.showConfirmation(
+        'Confirm Map Deletion',
+        'Are you sure you want to permanently delete this map? This action cannot be undone and will remove the map from the app.',
+        async () => {
+          try {
+            await axios.post(`/publish/map/${mapId}`)
+            this.$emit('change-processed', { type: 'map-deletion-published', id: mapId })
+            this.loadPendingChanges() // Refresh the changes list
+          } catch (error) {
+            console.error('Error confirming map deletion:', error)
+            this.$emit('error', 'Failed to confirm map deletion')
+          }
+        },
+        'danger',
+        'Delete Map',
+        'Cancel'
+      )
     },
     
     async revertMapChange(mapId) {
