@@ -236,7 +236,7 @@
                 </div>
                 
                 <!-- Detailed Information -->
-                <div v-if="expandedItems[`deleted-${building.id}`]" class="item-details-expanded">
+                <div v-if="expandedItems[`deleted-${item.id}`]" class="item-details-expanded">
                   <div class="details-grid">
                     <!-- Building Properties -->
                     <div class="detail-section">
@@ -300,6 +300,46 @@
                         </div>
                       </div>
                     </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Maps Deleted -->
+          <div v-if="changes.deletedMaps.length > 0" class="change-category">
+            <div class="category-header">
+              <span class="category-icon">🗺️🗑️</span>
+              <span class="category-title">Maps Deleted</span>
+              <span class="category-count">{{ changes.deletedMaps.length }}</span>
+            </div>
+            <div class="category-items">
+              <div v-for="map in changes.deletedMaps" :key="`deleted-map-${map.id}`" class="change-item">
+                <div class="item-content">
+                  <div class="item-info">
+                    <div class="item-title">
+                      <div class="item-icon">
+                        <img 
+                          v-if="map.image_path" 
+                          :src="getImageUrl(map.image_path)" 
+                          :alt="map.name + ' map'" 
+                          class="building-marker-icon"
+                        >
+                        <span v-else class="default-icon">🗺️</span>
+                      </div>
+                      <span class="item-name">{{ map.name }}</span>
+                      <span class="item-badge deleted">DELETED</span>
+                    </div>
+                    <span class="item-details">Map will be permanently removed from the app</span>
+                  </div>
+                  <div class="item-actions">
+                    <button 
+                      @click.stop="restoreMap(map.id)" 
+                      class="action-btn restore-btn"
+                      title="Restore Map"
+                    >
+                      ♻️
+                    </button>
                   </div>
                 </div>
               </div>
@@ -715,6 +755,7 @@ export default {
       changes: {
         added: [],
         deleted: [],
+        deletedMaps: [],
         restored: [],
         edited: [],
         mapChanges: [],
@@ -737,6 +778,7 @@ export default {
     totalChanges() {
       return this.changes.added.length + 
              this.changes.deleted.length + 
+             this.changes.deletedMaps.length +
              this.changes.restored.length + 
              this.changes.edited.length + 
              this.changes.mapChanges.length +
@@ -787,6 +829,7 @@ export default {
       this.changes = {
         added: [],
         deleted: [],
+        deletedMaps: [],
         restored: [],
         edited: [],
         mapChanges: [],
@@ -817,8 +860,8 @@ export default {
       if (data.maps) {
         data.maps.forEach(map => {
           if (map.pending_deletion) {
-            // Map marked for deletion - add to deleted section like buildings
-            this.changes.deleted.push(map)
+            // Map marked for deletion - add to separate deletedMaps array
+            this.changes.deletedMaps.push(map)
           } else if (map.published_data) {
             const currentData = {
               name: map.name,
