@@ -182,54 +182,54 @@
             </div>
           </div>
 
-          <!-- Buildings Deleted -->
+          <!-- Items Deleted -->
           <div v-if="changes.deleted.length > 0" class="change-category">
             <div class="category-header">
               <span class="category-icon">🗑️</span>
-              <span class="category-title">Buildings Deleted</span>
+              <span class="category-title">Items Deleted</span>
               <span class="category-count">{{ changes.deleted.length }}</span>
             </div>
             <div class="category-items">
-              <div v-for="building in changes.deleted" :key="`deleted-${building.id}`" class="change-item detailed-item">
-                <div class="item-header" @click="toggleItemDetails(`deleted-${building.id}`)">
+              <div v-for="item in changes.deleted" :key="`deleted-${item.id}`" class="change-item detailed-item">
+                <div class="item-header" @click="toggleItemDetails(`deleted-${item.id}`)">
                   <div class="item-content">
                     <div class="item-info">
                       <div class="item-title">
                         <div class="item-icon">
                           <img 
-                            v-if="building.image_path" 
-                            :src="getImageUrl(building.image_path)" 
-                            :alt="building.building_name + ' marker'" 
+                            v-if="item.image_path" 
+                            :src="getImageUrl(item.image_path)" 
+                            :alt="(item.building_name || item.name) + ' marker'" 
                             class="building-marker-icon"
                           >
                           <span v-else class="default-icon">🗑️</span>
                         </div>
-                        <span class="item-name">{{ building.building_name }}</span>
+                        <span class="item-name">{{ item.building_name || item.name }}</span>
                         <span class="item-badge deleted">DELETED</span>
                       </div>
                       <span class="item-details">Will be permanently removed from the app</span>
                     </div>
                     <div class="item-actions">
                       <button 
-                        @click.stop="restoreBuilding(building.id)" 
+                        @click.stop="item.building_name ? restoreBuilding(item.id) : restoreMap(item.id)" 
                         class="action-btn restore-btn"
-                        title="Restore Building"
+                        :title="item.building_name ? 'Restore Building' : 'Restore Map'"
                       >
                         ♻️
                       </button>
                       <button 
-                        @click.stop="confirmDeleteBuilding(building.id)" 
+                        @click.stop="item.building_name ? confirmDeleteBuilding(item.id) : confirmDeleteMap(item.id)" 
                         class="action-btn confirm-delete-btn"
                         title="Confirm Deletion"
                       >
                         ✅
                       </button>
                       <button 
-                        @click.stop="toggleItemDetails(`deleted-${building.id}`)"
+                        @click.stop="toggleItemDetails(`deleted-${item.id}`)"
                         class="action-btn details-btn"
-                        :title="expandedItems[`deleted-${building.id}`] ? 'Hide Details' : 'Show Details'"
+                        :title="expandedItems[`deleted-${item.id}`] ? 'Hide Details' : 'Show Details'"
                       >
-                        {{ expandedItems[`deleted-${building.id}`] ? '📖' : '📄' }}
+                        {{ expandedItems[`deleted-${item.id}`] ? '📖' : '📄' }}
                       </button>
                     </div>
                   </div>
@@ -817,12 +817,8 @@ export default {
       if (data.maps) {
         data.maps.forEach(map => {
           if (map.pending_deletion) {
-            // Map marked for deletion
-            this.changes.mapChanges.push({
-              id: map.id,
-              description: 'Map Marked for Deletion',
-              details: `"${map.name}" will be deleted when published`
-            })
+            // Map marked for deletion - add to deleted section like buildings
+            this.changes.deleted.push(map)
           } else if (map.published_data) {
             const currentData = {
               name: map.name,
@@ -981,6 +977,31 @@ export default {
       } catch (error) {
         console.error('Error publishing building:', error)
         this.$emit('error', 'Failed to publish building')
+      }
+    },
+    
+    async restoreMap(mapId) {
+      try {
+        // For maps marked for deletion, we need to unmark the pending_deletion flag
+        await axios.put(`/map/${mapId}`, {
+          pending_deletion: false
+        })
+        this.$emit('change-processed', { type: 'map-restored', id: mapId })
+        this.loadPendingChanges() // Refresh the changes list
+      } catch (error) {
+        console.error('Error restoring map:', error)
+        this.$emit('error', 'Failed to restore map')
+      }
+    },
+    
+    async confirmDeleteMap(mapId) {
+      try {
+        await axios.post(`/publish/map/${mapId}`)
+        this.$emit('change-processed', { type: 'map-deletion-published', id: mapId })
+        this.loadPendingChanges() // Refresh the changes list
+      } catch (error) {
+        console.error('Error confirming map deletion:', error)
+        this.$emit('error', 'Failed to confirm map deletion')
       }
     },
     
