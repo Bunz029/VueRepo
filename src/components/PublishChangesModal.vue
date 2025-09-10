@@ -61,53 +61,53 @@
               <span class="category-count">{{ changes.added.length }}</span>
             </div>
             <div class="category-items">
-              <div v-for="building in changes.added" :key="`added-${building.id}`" class="change-item detailed-item">
-                <div class="item-header" @click="toggleItemDetails(`added-${building.id}`)">
+              <div v-for="building in changes.added" :key="`added-${building?.id}`" class="change-item detailed-item">
+                <div class="item-header" @click="toggleItemDetails(`added-${building?.id}`)">
                   <div class="item-content">
                     <div class="item-info">
                       <div class="item-title">
                         <div class="item-icon">
                           <img 
-                            v-if="building.image_path" 
-                            :src="getImageUrl(building.image_path)" 
+                            v-if="building?.image_path" 
+                            :src="getImageUrl(building?.image_path)" 
                             :alt="building.building_name + ' marker'" 
                             class="building-marker-icon"
                           >
                           <span v-else class="default-icon">🏢</span>
                         </div>
-                        <span class="item-name">{{ building.building_name }}</span>
+                        <span class="item-name">{{ building?.building_name || 'Unknown Building' }}</span>
                         <span class="item-badge new">NEW</span>
                       </div>
-                      <span class="item-details">Position: ({{ building.x_coordinate }}, {{ building.y_coordinate }}) • Size: {{ building.width }}×{{ building.height }}px</span>
+                      <span class="item-details">Position: ({{ building?.x_coordinate || 0 }}, {{ building?.y_coordinate || 0 }}) • Size: {{ building?.width || 30 }}×{{ building?.height || 30 }}px</span>
                     </div>
                     <div class="item-actions">
                       <button 
-                        @click.stop="deleteBuilding(building.id)" 
+                        @click.stop="deleteBuilding(building?.id)" 
                         class="action-btn delete-btn"
                         title="Delete Building"
                       >
                         🗑️
                       </button>
                       <button 
-                        @click.stop="publishBuilding(building.id)" 
+                        @click.stop="publishBuilding(building?.id)" 
                         class="action-btn publish-btn"
                         title="Publish This Building"
                       >
                         📤
                       </button>
                       <button 
-                        @click.stop="toggleItemDetails(`added-${building.id}`)"
+                        @click.stop="toggleItemDetails(`added-${building?.id}`)"
                         class="action-btn details-btn"
-                        :title="expandedItems[`added-${building.id}`] ? 'Hide Details' : 'Show Details'"
+                        :title="expandedItems[`added-${building?.id}`] ? 'Hide Details' : 'Show Details'"
                       >
-                        {{ expandedItems[`added-${building.id}`] ? '📖' : '📄' }}
+                        {{ expandedItems[`added-${building?.id}`] ? '📖' : '📄' }}
                       </button>
                     </div>
                   </div>
                 </div>
                 
                 <!-- Detailed Information -->
-                <div v-if="expandedItems[`added-${building.id}`] && building" class="item-details-expanded">
+                <div v-if="expandedItems[`added-${building?.id}`] && building" class="item-details-expanded">
                   <div class="details-grid">
                     
                     <!-- Building Properties -->
@@ -120,11 +120,11 @@
                         </div>
                         <div class="property-item" v-if="building?.description">
                           <span class="property-label">Description:</span>
-                          <span class="property-value">{{ building.description }}</span>
+                          <span class="property-value">{{ building?.description }}</span>
                         </div>
                         <div class="property-item" v-if="building?.services">
                           <span class="property-label">Services:</span>
-                          <span class="property-value">{{ building.services }}</span>
+                          <span class="property-value">{{ building?.services }}</span>
                         </div>
                         <div class="property-item">
                           <span class="property-label">Position:</span>
@@ -136,31 +136,31 @@
                         </div>
                         <div class="property-item" v-if="building?.latitude && building?.longitude">
                           <span class="property-label">Coordinates:</span>
-                          <span class="property-value">{{ building.latitude }}, {{ building.longitude }}</span>
+                          <span class="property-value">{{ building?.latitude }}, {{ building?.longitude }}</span>
                         </div>
                       </div>
                     </div>
                     
                     <!-- Building Images -->
-                    <div class="detail-section" v-if="building.image_path || building.modal_image_path">
+                    <div class="detail-section" v-if="building?.image_path || building?.modal_image_path">
                       <h4>🖼️ Building Images</h4>
                       <div class="image-gallery">
-                        <div v-if="building.image_path" class="image-item">
-                          <img :src="getImageUrl(building.image_path)" :alt="building.building_name + ' marker'" class="building-image">
+                        <div v-if="building?.image_path" class="image-item">
+                          <img :src="getImageUrl(building?.image_path)" :alt="building.building_name + ' marker'" class="building-image">
                           <p class="image-label">Marker Image</p>
                         </div>
-                        <div v-if="building.modal_image_path" class="image-item">
-                          <img :src="getImageUrl(building.modal_image_path)" :alt="building.building_name + ' modal'" class="building-image">
+                        <div v-if="building?.modal_image_path" class="image-item">
+                          <img :src="getImageUrl(building?.modal_image_path)" :alt="building.building_name + ' modal'" class="building-image">
                           <p class="image-label">Modal Image</p>
                         </div>
                       </div>
                     </div>
                     
                     <!-- Employees -->
-                    <div class="detail-section" v-if="building && building.employees && building.employees.length > 0">
-                      <h4>👥 Employees ({{ building.employees.length }})</h4>
+                    <div class="detail-section" v-if="building && building?.employees && building?.employees.length > 0">
+                      <h4>👥 Employees ({{ building?.employees.length }})</h4>
                       <div class="employees-list">
-                        <div v-for="employee in building.employees" :key="employee.id" class="employee-item">
+                        <div v-for="employee in (building && building?.employees ? building?.employees : [])" :key="employee.id" class="employee-item">
                           <div class="employee-info">
                             <div class="employee-avatar">
                               <img v-if="employee.employee_image" :src="getImageUrl(employee.employee_image)" :alt="employee.employee_name" class="employee-image">
@@ -311,10 +311,10 @@
                     </div>
                     
                     <!-- Employees -->
-                    <div class="detail-section" v-if="building && building.employees && building.employees.length > 0">
-                      <h4>👥 Employees ({{ building.employees.length }})</h4>
+                    <div class="detail-section" v-if="building && building?.employees && building?.employees.length > 0">
+                      <h4>👥 Employees ({{ building?.employees.length }})</h4>
                       <div class="employees-list">
-                        <div v-for="employee in building.employees" :key="employee.id" class="employee-item">
+                        <div v-for="employee in (building && building?.employees ? building?.employees : [])" :key="employee.id" class="employee-item">
                           <div class="employee-info">
                             <div class="employee-avatar">
                               <img v-if="employee.employee_image" :src="getImageUrl(employee.employee_image)" :alt="employee.employee_name" class="employee-image">
@@ -344,53 +344,53 @@
               <span class="category-count">{{ changes.restored.length }}</span>
             </div>
             <div class="category-items">
-              <div v-for="building in changes.restored" :key="`restored-${building.id}`" class="change-item detailed-item">
-                <div class="item-header" @click="toggleItemDetails(`restored-${building.id}`)">
+              <div v-for="building in changes.restored" :key="`restored-${building?.id}`" class="change-item detailed-item">
+                <div class="item-header" @click="toggleItemDetails(`restored-${building?.id}`)">
                   <div class="item-content">
                     <div class="item-info">
                       <div class="item-title">
                         <div class="item-icon">
                           <img 
-                            v-if="building.image_path" 
-                            :src="getImageUrl(building.image_path)" 
+                            v-if="building?.image_path" 
+                            :src="getImageUrl(building?.image_path)" 
                             :alt="building.building_name + ' marker'" 
                             class="building-marker-icon"
                           >
                           <span v-else class="default-icon">♻️</span>
                         </div>
-                        <span class="item-name">{{ building.building_name }}</span>
+                        <span class="item-name">{{ building?.building_name || 'Unknown Building' }}</span>
                         <span class="item-badge restored">RESTORED</span>
                       </div>
                       <span class="item-details">Restored from trash and ready to publish</span>
                     </div>
                     <div class="item-actions">
                       <button 
-                        @click.stop="undoRestoreBuilding(building.id)" 
+                        @click.stop="undoRestoreBuilding(building?.id)" 
                         class="action-btn undo-btn"
                         title="Undo Restore"
                       >
                         ↩️
                       </button>
                       <button 
-                        @click.stop="publishBuilding(building.id)" 
+                        @click.stop="publishBuilding(building?.id)" 
                         class="action-btn publish-btn"
                         title="Publish This Building"
                       >
                         📤
                       </button>
                       <button 
-                        @click.stop="toggleItemDetails(`restored-${building.id}`)"
+                        @click.stop="toggleItemDetails(`restored-${building?.id}`)"
                         class="action-btn details-btn"
-                        :title="expandedItems[`restored-${building.id}`] ? 'Hide Details' : 'Show Details'"
+                        :title="expandedItems[`restored-${building?.id}`] ? 'Hide Details' : 'Show Details'"
                       >
-                        {{ expandedItems[`restored-${building.id}`] ? '📖' : '📄' }}
+                        {{ expandedItems[`restored-${building?.id}`] ? '📖' : '📄' }}
                       </button>
                     </div>
                   </div>
                 </div>
                 
                 <!-- Detailed Information -->
-                <div v-if="expandedItems[`restored-${building.id}`]" class="item-details-expanded">
+                <div v-if="expandedItems[`restored-${building?.id}`]" class="item-details-expanded">
                   <div class="details-grid">
                     <!-- Building Properties -->
                     <div class="detail-section">
@@ -398,48 +398,48 @@
                       <div class="property-list">
                         <div class="property-item">
                           <span class="property-label">Name:</span>
-                          <span class="property-value">{{ building.building_name }}</span>
+                          <span class="property-value">{{ building?.building_name || 'Unknown Building' }}</span>
                         </div>
-                        <div class="property-item" v-if="building.description">
+                        <div class="property-item" v-if="building?.description">
                           <span class="property-label">Description:</span>
-                          <span class="property-value">{{ building.description }}</span>
+                          <span class="property-value">{{ building?.description }}</span>
                         </div>
-                        <div class="property-item" v-if="building.services">
+                        <div class="property-item" v-if="building?.services">
                           <span class="property-label">Services:</span>
-                          <span class="property-value">{{ building.services }}</span>
+                          <span class="property-value">{{ building?.services }}</span>
                         </div>
                         <div class="property-item">
                           <span class="property-label">Position:</span>
-                          <span class="property-value">({{ building.x_coordinate }}, {{ building.y_coordinate }})</span>
+                          <span class="property-value">({{ building?.x_coordinate || 0 }}, {{ building?.y_coordinate || 0 }})</span>
                         </div>
                         <div class="property-item">
                           <span class="property-label">Size:</span>
-                          <span class="property-value">{{ building.width || 30 }}×{{ building.height || 30 }}px</span>
+                          <span class="property-value">{{ building?.width || 30 }}×{{ building?.height || 30 }}px</span>
                         </div>
                       </div>
                     </div>
                     
                     
                     <!-- Building Images -->
-                    <div class="detail-section" v-if="building.image_path || building.modal_image_path">
+                    <div class="detail-section" v-if="building?.image_path || building?.modal_image_path">
                       <h4>🖼️ Building Images</h4>
                       <div class="image-gallery">
-                        <div v-if="building.image_path" class="image-item">
-                          <img :src="getImageUrl(building.image_path)" :alt="building.building_name + ' marker'" class="building-image">
+                        <div v-if="building?.image_path" class="image-item">
+                          <img :src="getImageUrl(building?.image_path)" :alt="building.building_name + ' marker'" class="building-image">
                           <p class="image-label">Marker Image</p>
                         </div>
-                        <div v-if="building.modal_image_path" class="image-item">
-                          <img :src="getImageUrl(building.modal_image_path)" :alt="building.building_name + ' modal'" class="building-image">
+                        <div v-if="building?.modal_image_path" class="image-item">
+                          <img :src="getImageUrl(building?.modal_image_path)" :alt="building.building_name + ' modal'" class="building-image">
                           <p class="image-label">Modal Image</p>
                         </div>
                       </div>
                     </div>
                     
                     <!-- Employees -->
-                    <div class="detail-section" v-if="building && building.employees && building.employees.length > 0">
-                      <h4>👥 Employees ({{ building.employees.length }})</h4>
+                    <div class="detail-section" v-if="building && building?.employees && building?.employees.length > 0">
+                      <h4>👥 Employees ({{ building?.employees.length }})</h4>
                       <div class="employees-list">
-                        <div v-for="employee in building.employees" :key="employee.id" class="employee-item">
+                        <div v-for="employee in (building && building?.employees ? building?.employees : [])" :key="employee.id" class="employee-item">
                           <div class="employee-info">
                             <div class="employee-avatar">
                               <img v-if="employee.employee_image" :src="getImageUrl(employee.employee_image)" :alt="employee.employee_name" class="employee-image">
@@ -469,53 +469,53 @@
               <span class="category-count">{{ changes.edited.length }}</span>
             </div>
             <div class="category-items">
-              <div v-for="building in changes.edited" :key="`edited-${building.id}`" class="change-item detailed-item">
-                <div class="item-header" @click="toggleItemDetails(`edited-${building.id}`)">
+              <div v-for="building in changes.edited" :key="`edited-${building?.id}`" class="change-item detailed-item">
+                <div class="item-header" @click="toggleItemDetails(`edited-${building?.id}`)">
                   <div class="item-content">
                     <div class="item-info">
                       <div class="item-title">
                         <div class="item-icon">
                           <img 
-                            v-if="building.image_path" 
-                            :src="getImageUrl(building.image_path)" 
+                            v-if="building?.image_path" 
+                            :src="getImageUrl(building?.image_path)" 
                             :alt="building.building_name + ' marker'" 
                             class="building-marker-icon"
                           >
                           <span v-else class="default-icon">✏️</span>
                         </div>
-                        <span class="item-name">{{ building.building_name }}</span>
+                        <span class="item-name">{{ building?.building_name || 'Unknown Building' }}</span>
                         <span class="item-badge edited">EDITED</span>
                       </div>
                       <span class="item-details">{{ getPropertyChanges(building).length }} properties changed</span>
                     </div>
                     <div class="item-actions">
                       <button 
-                        @click.stop="revertBuilding(building.id)" 
+                        @click.stop="revertBuilding(building?.id)" 
                         class="action-btn revert-btn"
                         title="Revert Changes"
                       >
                         ↩️
                       </button>
                       <button 
-                        @click.stop="publishBuilding(building.id)" 
+                        @click.stop="publishBuilding(building?.id)" 
                         class="action-btn publish-btn"
                         title="Publish This Building"
                       >
                         📤
                       </button>
                       <button 
-                        @click.stop="toggleItemDetails(`edited-${building.id}`)"
+                        @click.stop="toggleItemDetails(`edited-${building?.id}`)"
                         class="action-btn details-btn"
-                        :title="expandedItems[`edited-${building.id}`] ? 'Hide Details' : 'Show Details'"
+                        :title="expandedItems[`edited-${building?.id}`] ? 'Hide Details' : 'Show Details'"
                       >
-                        {{ expandedItems[`edited-${building.id}`] ? '📖' : '📄' }}
+                        {{ expandedItems[`edited-${building?.id}`] ? '📖' : '📄' }}
                       </button>
                     </div>
                   </div>
                 </div>
                 
                 <!-- Detailed Changes -->
-                <div v-if="expandedItems[`edited-${building.id}`]" class="item-details-expanded">
+                <div v-if="expandedItems[`edited-${building?.id}`]" class="item-details-expanded">
                   <div class="details-grid">
                     <!-- Property Changes -->
                     <div class="detail-section" v-if="getPropertyChanges(building).length > 0">
@@ -534,40 +534,40 @@
                     
                     
                     <!-- Current Images -->
-                    <div class="detail-section" v-if="building.image_path || building.modal_image_path">
+                    <div class="detail-section" v-if="building?.image_path || building?.modal_image_path">
                       <h4>🖼️ Current Images</h4>
                       <div class="image-gallery">
-                        <div v-if="building.image_path" class="image-item">
-                          <img :src="getImageUrl(building.image_path)" :alt="building.building_name + ' marker'" class="building-image">
+                        <div v-if="building?.image_path" class="image-item">
+                          <img :src="getImageUrl(building?.image_path)" :alt="building.building_name + ' marker'" class="building-image">
                           <p class="image-label">Current Marker</p>
                         </div>
-                        <div v-if="building.modal_image_path" class="image-item">
-                          <img :src="getImageUrl(building.modal_image_path)" :alt="building.building_name + ' modal'" class="building-image">
+                        <div v-if="building?.modal_image_path" class="image-item">
+                          <img :src="getImageUrl(building?.modal_image_path)" :alt="building.building_name + ' modal'" class="building-image">
                           <p class="image-label">Current Modal</p>
                         </div>
                       </div>
                     </div>
                     
                     <!-- Published Images (if different) -->
-                    <div class="detail-section" v-if="building.published_data && (building.image_path !== building.published_data.image_path || building.modal_image_path !== building.published_data.modal_image_path)">
+                    <div class="detail-section" v-if="building?.published_data && (building?.image_path !== building?.published_data.image_path || building?.modal_image_path !== building?.published_data.modal_image_path)">
                       <h4>📖 Published Images</h4>
                       <div class="image-gallery">
-                        <div v-if="building.published_data.image_path" class="image-item">
-                          <img :src="getImageUrl(building.published_data.image_path)" :alt="building.building_name + ' published marker'" class="building-image">
+                        <div v-if="building?.published_data.image_path" class="image-item">
+                          <img :src="getImageUrl(building?.published_data.image_path)" :alt="building.building_name + ' published marker'" class="building-image">
                           <p class="image-label">Published Marker</p>
                         </div>
-                        <div v-if="building.published_data.modal_image_path" class="image-item">
-                          <img :src="getImageUrl(building.published_data.modal_image_path)" :alt="building.building_name + ' published modal'" class="building-image">
+                        <div v-if="building?.published_data.modal_image_path" class="image-item">
+                          <img :src="getImageUrl(building?.published_data.modal_image_path)" :alt="building.building_name + ' published modal'" class="building-image">
                           <p class="image-label">Published Modal</p>
                         </div>
                       </div>
                     </div>
                     
                     <!-- Employee Changes -->
-                    <div class="detail-section" v-if="building && building.employees && building.employees.length > 0">
-                      <h4>👥 Current Employees ({{ building.employees.length }})</h4>
+                    <div class="detail-section" v-if="building && building?.employees && building?.employees.length > 0">
+                      <h4>👥 Current Employees ({{ building?.employees.length }})</h4>
                       <div class="employees-list">
-                        <div v-for="employee in building.employees" :key="employee.id" class="employee-item">
+                        <div v-for="employee in (building && building?.employees ? building?.employees : [])" :key="employee.id" class="employee-item">
                           <div class="employee-info">
                             <div class="employee-avatar">
                               <img v-if="employee.employee_image" :src="getImageUrl(employee.employee_image)" :alt="employee.employee_name" class="employee-image">
@@ -838,12 +838,12 @@ export default {
               ...building,
               type: 'building'
             })
-          } else if (!building.is_published && !building.published_data) {
+          } else if (!building.is_published && !building?.published_data) {
             // New building (never published)
             this.changes.added.push(building)
-          } else if (building.published_data) {
+          } else if (building?.published_data) {
             // Check if it's a restoration (was deleted but now restored)
-            if (building.published_data.pending_deletion && !building.pending_deletion) {
+            if (building?.published_data.pending_deletion && !building.pending_deletion) {
               this.changes.restored.push(building)
             } else {
               // Regular edit
@@ -1207,11 +1207,11 @@ export default {
     },
     
     getPropertyChanges(building) {
-      if (!building.published_data) return []
+      if (!building?.published_data) return []
       
       const changes = []
       const current = building
-      const published = building.published_data
+      const published = building?.published_data
       
       const fields = [
         { key: 'building_name', label: 'Name' },
