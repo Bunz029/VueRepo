@@ -202,7 +202,7 @@ export default {
   methods: {
     async fetchMaps() {
       try {
-        const response = await axios.get('/api/maps')
+        const response = await axios.get('/maps')
         this.maps = response.data
       } catch (error) {
         console.error('Error fetching maps:', error)
@@ -211,8 +211,8 @@ export default {
     async fetchBuildings() {
       try {
         const url = this.selectedMapId
-          ? `/api/buildings?map_id=${this.selectedMapId}`
-          : '/api/buildings'
+          ? `/buildings?map_id=${this.selectedMapId}`
+          : '/buildings'
         const response = await axios.get(url)
         this.buildings = response.data
       } catch (error) {
@@ -232,7 +232,7 @@ export default {
       if (!confirm('Are you sure you want to delete this building?')) return
 
       try {
-        await axios.delete(`/api/buildings/${id}`)
+        await axios.delete(`/buildings/${id}`)
         await this.fetchBuildings()
       } catch (error) {
         console.error('Error deleting building:', error)
@@ -246,7 +246,7 @@ export default {
       formData.append('image', file)
 
       try {
-        const response = await axios.post('/api/buildings/upload', formData, {
+        const response = await axios.post('/buildings/upload', formData, {
           headers: {
             'Content-Type': 'multipart/form-data'
           }
@@ -259,9 +259,9 @@ export default {
     async saveBuilding() {
       try {
         if (this.editingBuilding) {
-          await axios.put(`/api/buildings/${this.editingBuilding.id}`, this.buildingForm)
+          await axios.put(`/buildings/${this.editingBuilding.id}`, this.buildingForm)
         } else {
-          await axios.post('/api/buildings', this.buildingForm)
+          await axios.post('/buildings', this.buildingForm)
         }
         await this.fetchBuildings()
         this.closeModal()

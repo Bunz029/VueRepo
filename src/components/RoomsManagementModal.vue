@@ -175,7 +175,7 @@ export default {
 
       this.loading = true
       try {
-        const response = await axios.get(`/api/buildings/${this.building.id}/rooms/admin`)
+        const response = await axios.get(`/buildings/${this.building.id}/rooms/admin`)
         this.rooms = response.data
       } catch (error) {
         console.error('Error loading rooms:', error)
@@ -284,10 +284,10 @@ export default {
           
           // Debug: Check if FormData has the file
           
-          response = await axios.put(`/api/rooms/${this.editingRoom.id}`, updateFormData)
+          response = await axios.put(`/rooms/${this.editingRoom.id}`, updateFormData)
           this.$emit('room-updated', response.data.room)
         } else {
-          response = await axios.post('/api/rooms', formData)
+          response = await axios.post('/rooms', formData)
           this.$emit('room-added', response.data.room)
         }
 
@@ -309,7 +309,7 @@ export default {
       if (!confirm(`Are you sure you want to delete "${room.name}"?`)) return
 
       try {
-        await axios.delete(`/api/rooms/${room.id}`)
+        await axios.delete(`/rooms/${room.id}`)
         this.loadRooms()
         this.$emit('room-deleted', room)
         this.$emit('show-toast', 'Room deleted successfully', 'success')

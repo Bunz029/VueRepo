@@ -1478,7 +1478,7 @@ export default {
           // For update, convert to raw XMLHttpRequest for maximum compatibility
           await new Promise((resolve, reject) => {
             const xhr = new XMLHttpRequest()
-            xhr.open('POST', `https://web-production-23886.up.railway.app/api/buildings/${this.editingBuilding.id}`)
+            xhr.open('POST', `https://web-production-23886.up.railway.app/buildings/${this.editingBuilding.id}`)
             xhr.withCredentials = true
             xhr.setRequestHeader('Accept', 'application/json')
             

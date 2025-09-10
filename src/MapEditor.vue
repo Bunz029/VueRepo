@@ -142,7 +142,7 @@ export default {
   methods: {
     async fetchMaps() {
       try {
-        const response = await axios.get('/api/map')
+        const response = await axios.get('/map')
         this.maps = response.data
       } catch (error) {
         console.error('Error fetching maps:', error)
@@ -158,7 +158,7 @@ export default {
       if (!confirm('Are you sure you want to delete this map?')) return
 
       try {
-        await axios.delete(`/api/map/${id}`)
+        await axios.delete(`/map/${id}`)
         await this.fetchMaps()
         alert('Map deleted successfully')
       } catch (error) {
@@ -168,7 +168,7 @@ export default {
     },
     async activateMap(id) {
       try {
-        await axios.put(`/api/map/${id}/activate`)
+        await axios.put(`/map/${id}/activate`)
         await this.fetchMaps()
         alert('Map activated successfully')
       } catch (error) {
@@ -187,7 +187,7 @@ export default {
       formData.append('height', this.mapForm.height || 600)
 
       try {
-        const response = await axios.post('/api/map', formData, {
+        const response = await axios.post('/map', formData, {
           headers: {
             'Content-Type': 'multipart/form-data'
           }
@@ -212,9 +212,9 @@ export default {
     async saveMap() {
       try {
         if (this.editingMap) {
-          await axios.put(`/api/map/${this.editingMap.id}`, this.mapForm)
+          await axios.put(`/map/${this.editingMap.id}`, this.mapForm)
         } else {
-          await axios.post('/api/map', this.mapForm)
+          await axios.post('/map', this.mapForm)
         }
         await this.fetchMaps()
         this.closeModal()
