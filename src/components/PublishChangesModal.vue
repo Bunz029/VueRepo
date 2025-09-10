@@ -284,17 +284,28 @@
                       </div>
                     </div>
                     
-                    <!-- Building Images -->
-                    <div class="detail-section" v-if="building.image_path || building.modal_image_path">
+                    <!-- Building Images (only for buildings) -->
+                    <div v-if="item.type === 'building' && (item.image_path || item.modal_image_path)" class="detail-section">
                       <h4>🖼️ Building Images</h4>
                       <div class="image-gallery">
-                        <div v-if="building.image_path" class="image-item">
-                          <img :src="getImageUrl(building.image_path)" :alt="building.building_name + ' marker'" class="building-image">
+                        <div v-if="item.image_path" class="image-item">
+                          <img :src="getImageUrl(item.image_path)" :alt="(item.building_name || item.name) + ' marker'" class="building-image">
                           <p class="image-label">Marker Image</p>
                         </div>
-                        <div v-if="building.modal_image_path" class="image-item">
-                          <img :src="getImageUrl(building.modal_image_path)" :alt="building.building_name + ' modal'" class="building-image">
+                        <div v-if="item.modal_image_path" class="image-item">
+                          <img :src="getImageUrl(item.modal_image_path)" :alt="(item.building_name || item.name) + ' modal'" class="building-image">
                           <p class="image-label">Modal Image</p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <!-- Map Image (only for maps) -->
+                    <div v-if="item.type === 'map' && item.image_path" class="detail-section">
+                      <h4>🖼️ Map Image</h4>
+                      <div class="image-gallery">
+                        <div class="image-item">
+                          <img :src="getImageUrl(item.image_path)" :alt="item.name + ' map'" class="building-image">
+                          <p class="image-label">Map Image</p>
                         </div>
                       </div>
                     </div>
