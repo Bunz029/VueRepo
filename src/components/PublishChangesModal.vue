@@ -107,7 +107,7 @@
                 </div>
                 
                 <!-- Detailed Information -->
-                <div v-if="expandedItems[`added-${building.id}`]" class="item-details-expanded">
+                <div v-if="expandedItems[`added-${building.id}`] && building" class="item-details-expanded">
                   <div class="details-grid">
                     
                     <!-- Building Properties -->
@@ -116,25 +116,25 @@
                       <div class="property-list">
                         <div class="property-item">
                           <span class="property-label">Name:</span>
-                          <span class="property-value">{{ building.building_name }}</span>
+                          <span class="property-value">{{ building?.building_name || 'N/A' }}</span>
                         </div>
-                        <div class="property-item" v-if="building.description">
+                        <div class="property-item" v-if="building?.description">
                           <span class="property-label">Description:</span>
                           <span class="property-value">{{ building.description }}</span>
                         </div>
-                        <div class="property-item" v-if="building.services">
+                        <div class="property-item" v-if="building?.services">
                           <span class="property-label">Services:</span>
                           <span class="property-value">{{ building.services }}</span>
                         </div>
                         <div class="property-item">
                           <span class="property-label">Position:</span>
-                          <span class="property-value">({{ building.x_coordinate }}, {{ building.y_coordinate }})</span>
+                          <span class="property-value">({{ building?.x_coordinate || 0 }}, {{ building?.y_coordinate || 0 }})</span>
                         </div>
                         <div class="property-item">
                           <span class="property-label">Size:</span>
-                          <span class="property-value">{{ building.width || 30 }}×{{ building.height || 30 }}px</span>
+                          <span class="property-value">{{ building?.width || 30 }}×{{ building?.height || 30 }}px</span>
                         </div>
-                        <div class="property-item" v-if="building.latitude && building.longitude">
+                        <div class="property-item" v-if="building?.latitude && building?.longitude">
                           <span class="property-label">Coordinates:</span>
                           <span class="property-value">{{ building.latitude }}, {{ building.longitude }}</span>
                         </div>
