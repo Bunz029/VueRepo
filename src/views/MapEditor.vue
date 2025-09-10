@@ -938,7 +938,7 @@ export default {
     async enterLayoutEditModeFor(map) {
       try {
         if (!map || !map.id) return
-        const { data } = await axios.get(`/api/map/${map.id}/layout`)
+        const { data } = await axios.get(`/map/${map.id}/layout`)
         this.activeMap = map
         await this.fetchBuildings()
         this.editingLayoutSnapshot = data
@@ -952,7 +952,7 @@ export default {
     async enterLayoutEditMode() {
       try {
         if (!this.activeMap || !this.activeMap.id) return
-        const { data } = await axios.get(`/api/map/${this.activeMap.id}/layout`)
+        const { data } = await axios.get(`/map/${this.activeMap.id}/layout`)
         this.editingLayoutSnapshot = data
         this.isEditingLayout = true
         await this.fetchBuildings()
@@ -965,7 +965,7 @@ export default {
     async saveLayout() {
       try {
         if (!this.activeMap || !this.activeMap.id) return
-        const { data } = await axios.post(`/api/map/${this.activeMap.id}/save-layout`)
+        const { data } = await axios.post(`/map/${this.activeMap.id}/save-layout`)
         this.$refs.toast?.success('Layout Saved', 'Map layout snapshot saved.')
         // Stay in edit mode; just refresh local snapshot reference
         this.editingLayoutSnapshot = data.snapshot
@@ -988,7 +988,7 @@ export default {
     },
     async fetchMaps() {
       try {
-        const response = await axios.get('/api/map')
+        const response = await axios.get('/map')
         this.maps = response.data || []
         
         // Find and set active map
@@ -1007,7 +1007,7 @@ export default {
       try {
         const params = {}
         if (this.activeMap?.id) params.map_id = this.activeMap.id
-        const response = await axios.get('/api/buildings', { params })
+        const response = await axios.get('/buildings', { params })
         
         this.buildings = response.data || []
       } catch (error) {
@@ -1223,7 +1223,7 @@ export default {
       this.stopBuildingCountdown()
       
       try {
-        await axios.delete(`/api/buildings/${this.buildingToDelete.id}`)
+        await axios.delete(`/buildings/${this.buildingToDelete.id}`)
         
         // Clear selection if this was the selected building
         if (this.selectedBuilding && this.selectedBuilding.id === this.buildingToDelete.id) {
@@ -1515,7 +1515,7 @@ export default {
           })
         } else {
           // For create, use axios directly
-          await axios.post('/api/buildings', formData, {
+          await axios.post('/buildings', formData, {
             headers: { 'Content-Type': 'multipart/form-data' }
           })
           
@@ -1656,7 +1656,7 @@ export default {
       if (!this.mapToDelete) return
       
       try {
-        await axios.delete(`/api/map/${this.mapToDelete.id}`)
+        await axios.delete(`/map/${this.mapToDelete.id}`)
         await this.fetchMaps()
         
         // Update unpublished count after map deletion
