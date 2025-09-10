@@ -756,11 +756,11 @@
       
       <div class="delete-modal-header">
         <div class="delete-modal-icon">⚠️</div>
-        <h3 class="delete-modal-title">Delete Map</h3>
+        <h3 class="delete-modal-title">Mark Map for Deletion</h3>
       </div>
       
       <p class="delete-modal-message">
-        Are you sure you want to delete map <strong>{{ mapToDelete ? mapToDelete.name : 'Unknown' }}</strong>? This action cannot be undone and will also remove all buildings associated with it.
+        Are you sure you want to mark map <strong>{{ mapToDelete ? mapToDelete.name : 'Unknown' }}</strong> for deletion? This will mark it for deletion and it will be removed when you publish changes. All buildings associated with it will also be affected.
       </p>
       
       <div class="delete-modal-actions">
@@ -1663,7 +1663,7 @@ export default {
         this.fetchUnpublishedCount()
         
         // Show success toast notification
-        this.$refs.toast.success('Map Deleted', 'Map has been successfully removed from the system.')
+        this.$refs.toast.success('Map Marked for Deletion', 'Map has been marked for deletion and will be removed when you publish changes.')
         
         // Close the confirmation modal
         this.closeMapDeleteModal()
