@@ -82,9 +82,9 @@
                     </div>
                     <div class="item-actions">
                       <button 
-                        @click.stop="deleteBuilding(building?.id)" 
+                        @click.stop="moveToTrash('building', building?.id)" 
                         class="action-btn delete-btn"
-                        title="Delete Building"
+                        title="Move to Trash"
                       >
                         🗑️
                       </button>
@@ -218,11 +218,11 @@
                         ♻️
                       </button>
                       <button 
-                        @click.stop="item.type === 'building' ? confirmDeleteBuilding(item.id) : confirmDeleteMap(item.id)" 
+                        @click.stop="moveToTrash(item.type, item.id)" 
                         class="action-btn confirm-delete-btn"
-                        title="Confirm Deletion"
+                        title="Move to Trash"
                       >
-                        ✅
+                        🗑️
                       </button>
                       <button 
                         @click.stop="toggleItemDetails(`deleted-${item.id}`)"
@@ -611,13 +611,13 @@
                     >
                       ↩️
                     </button>
-                    <button 
-                      @click="deleteMapChange(change.id)" 
-                      class="action-btn delete-btn"
-                      title="Delete Map"
-                    >
-                      🗑️
-                    </button>
+                      <button 
+                        @click="moveToTrash('map', change.id)" 
+                        class="action-btn delete-btn"
+                        title="Move to Trash"
+                      >
+                        🗑️
+                      </button>
                     <button 
                       @click="publishMapChange(change.id)" 
                       class="action-btn publish-btn"
@@ -927,22 +927,29 @@ export default {
     },
     
     // Individual change management methods
-    async deleteBuilding(buildingId) {
+    async moveToTrash(itemType, itemId) {
+      const itemName = itemType === 'building' ? 'Building' : 'Map'
       this.showConfirmation(
-        'Delete Building',
-        'Are you sure you want to permanently delete this building? This action cannot be undone.',
+        `Move ${itemName} to Trash`,
+        `Are you sure you want to move this ${itemName.toLowerCase()} to trash? You can restore it later from the Trash section.`,
         async () => {
           try {
-            await axios.delete(`/buildings/${buildingId}`)
-            this.$emit('change-processed', { type: 'building-deleted', id: buildingId })
+            if (itemType === 'building') {
+              await axios.delete(`/buildings/${itemId}`)
+              this.$emit('change-processed', { type: 'building-deleted', id: itemId })
+            } else if (itemType === 'map') {
+              await axios.delete(`/map/${itemId}`)
+              this.$emit('change-processed', { type: 'map-deleted', id: itemId })
+            }
             this.loadPendingChanges() // Refresh the changes list
+            this.$refs.toast?.success('Moved to Trash', `${itemName} has been moved to trash successfully.`)
           } catch (error) {
-            console.error('Error deleting building:', error)
-            this.$emit('error', 'Failed to delete building')
+            console.error(`Error moving ${itemName.toLowerCase()} to trash:`, error)
+            this.$refs.toast?.error('Move Failed', `Failed to move ${itemName.toLowerCase()} to trash.`)
           }
         },
-        'danger',
-        'Delete',
+        'warning',
+        'Move to Trash',
         'Cancel'
       )
     },
@@ -964,19 +971,20 @@ export default {
     async undoRestoreBuilding(buildingId) {
       this.showConfirmation(
         'Undo Restore',
-        'Are you sure you want to undo the restore and delete this building again?',
+        'Are you sure you want to undo the restore and move this building back to trash?',
         async () => {
           try {
             await axios.delete(`/buildings/${buildingId}`)
             this.$emit('change-processed', { type: 'building-deleted', id: buildingId })
             this.loadPendingChanges() // Refresh the changes list
+            this.$refs.toast?.success('Moved to Trash', 'Building has been moved back to trash.')
           } catch (error) {
             console.error('Error undoing restore:', error)
-            this.$emit('error', 'Failed to undo restore')
+            this.$refs.toast?.error('Move Failed', 'Failed to move building back to trash.')
           }
         },
         'warning',
-        'Delete',
+        'Move to Trash',
         'Cancel'
       )
     },
@@ -1001,25 +1009,6 @@ export default {
       )
     },
     
-    async confirmDeleteBuilding(buildingId) {
-      this.showConfirmation(
-        'Confirm Building Deletion',
-        'Are you sure you want to permanently delete this building? This action cannot be undone and will remove the building from the app.',
-        async () => {
-          try {
-            await axios.post(`/publish/building/${buildingId}`)
-            this.$emit('change-processed', { type: 'building-deletion-published', id: buildingId })
-            this.loadPendingChanges() // Refresh the changes list
-          } catch (error) {
-            console.error('Error confirming building deletion:', error)
-            this.$emit('error', 'Failed to confirm building deletion')
-          }
-        },
-        'danger',
-        'Delete Building',
-        'Cancel'
-      )
-    },
     
     async publishBuilding(buildingId) {
       try {
@@ -1046,25 +1035,6 @@ export default {
       }
     },
     
-    async confirmDeleteMap(mapId) {
-      this.showConfirmation(
-        'Confirm Map Deletion',
-        'Are you sure you want to permanently delete this map? This action cannot be undone and will remove the map from the app.',
-        async () => {
-          try {
-            await axios.post(`/publish/map/${mapId}`)
-            this.$emit('change-processed', { type: 'map-deletion-published', id: mapId })
-            this.loadPendingChanges() // Refresh the changes list
-          } catch (error) {
-            console.error('Error confirming map deletion:', error)
-            this.$emit('error', 'Failed to confirm map deletion')
-          }
-        },
-        'danger',
-        'Delete Map',
-        'Cancel'
-      )
-    },
     
     async revertMapChange(mapId) {
       this.showConfirmation(
@@ -1086,25 +1056,6 @@ export default {
       )
     },
     
-    async deleteMapChange(mapId) {
-      this.showConfirmation(
-        'Delete Map',
-        'Are you sure you want to permanently delete this map? This action cannot be undone.',
-        async () => {
-          try {
-            await axios.delete(`/map/${mapId}`)
-            this.$emit('change-processed', { type: 'map-deleted', id: mapId })
-            this.loadPendingChanges() // Refresh the changes list
-          } catch (error) {
-            console.error('Error deleting map:', error)
-            this.$emit('error', 'Failed to delete map')
-          }
-        },
-        'danger',
-        'Delete Map',
-        'Cancel'
-      )
-    },
     
     async publishMapChange(mapId) {
       try {
