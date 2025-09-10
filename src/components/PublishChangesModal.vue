@@ -157,7 +157,7 @@
                     </div>
                     
                     <!-- Employees -->
-                    <div class="detail-section" v-if="building.employees && building.employees.length > 0">
+                    <div class="detail-section" v-if="building && building.employees && building.employees.length > 0">
                       <h4>👥 Employees ({{ building.employees.length }})</h4>
                       <div class="employees-list">
                         <div v-for="employee in building.employees" :key="employee.id" class="employee-item">
@@ -311,7 +311,7 @@
                     </div>
                     
                     <!-- Employees -->
-                    <div class="detail-section" v-if="building.employees && building.employees.length > 0">
+                    <div class="detail-section" v-if="building && building.employees && building.employees.length > 0">
                       <h4>👥 Employees ({{ building.employees.length }})</h4>
                       <div class="employees-list">
                         <div v-for="employee in building.employees" :key="employee.id" class="employee-item">
@@ -436,7 +436,7 @@
                     </div>
                     
                     <!-- Employees -->
-                    <div class="detail-section" v-if="building.employees && building.employees.length > 0">
+                    <div class="detail-section" v-if="building && building.employees && building.employees.length > 0">
                       <h4>👥 Employees ({{ building.employees.length }})</h4>
                       <div class="employees-list">
                         <div v-for="employee in building.employees" :key="employee.id" class="employee-item">
@@ -564,7 +564,7 @@
                     </div>
                     
                     <!-- Employee Changes -->
-                    <div class="detail-section" v-if="building.employees && building.employees.length > 0">
+                    <div class="detail-section" v-if="building && building.employees && building.employees.length > 0">
                       <h4>👥 Current Employees ({{ building.employees.length }})</h4>
                       <div class="employees-list">
                         <div v-for="employee in building.employees" :key="employee.id" class="employee-item">
