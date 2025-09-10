@@ -816,7 +816,14 @@ export default {
       // Categorize maps
       if (data.maps) {
         data.maps.forEach(map => {
-          if (map.published_data) {
+          if (map.pending_deletion) {
+            // Map marked for deletion
+            this.changes.mapChanges.push({
+              id: map.id,
+              description: 'Map Marked for Deletion',
+              details: `"${map.name}" will be deleted when published`
+            })
+          } else if (map.published_data) {
             const currentData = {
               name: map.name,
               image_path: map.image_path,
