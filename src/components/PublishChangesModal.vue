@@ -238,29 +238,48 @@
                 <!-- Detailed Information -->
                 <div v-if="expandedItems[`deleted-${item.id}`]" class="item-details-expanded">
                   <div class="details-grid">
-                    <!-- Building Properties -->
-                    <div class="detail-section">
+                    <!-- Building Properties (only for buildings) -->
+                    <div v-if="item.type === 'building'" class="detail-section">
                       <h4>📋 Building Properties</h4>
                       <div class="property-list">
                         <div class="property-item">
                           <span class="property-label">Name:</span>
-                          <span class="property-value">{{ building.building_name }}</span>
+                          <span class="property-value">{{ item.building_name }}</span>
                         </div>
-                        <div class="property-item" v-if="building.description">
+                        <div class="property-item" v-if="item.description">
                           <span class="property-label">Description:</span>
-                          <span class="property-value">{{ building.description }}</span>
+                          <span class="property-value">{{ item.description }}</span>
                         </div>
-                        <div class="property-item" v-if="building.services">
+                        <div class="property-item" v-if="item.services">
                           <span class="property-label">Services:</span>
-                          <span class="property-value">{{ building.services }}</span>
+                          <span class="property-value">{{ item.services }}</span>
                         </div>
                         <div class="property-item">
                           <span class="property-label">Position:</span>
-                          <span class="property-value">({{ building.x_coordinate }}, {{ building.y_coordinate }})</span>
+                          <span class="property-value">({{ item.x_coordinate }}, {{ item.y_coordinate }})</span>
                         </div>
                         <div class="property-item">
                           <span class="property-label">Size:</span>
-                          <span class="property-value">{{ building.width || 30 }}×{{ building.height || 30 }}px</span>
+                          <span class="property-value">{{ item.width || 30 }}×{{ item.height || 30 }}px</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <!-- Map Properties (only for maps) -->
+                    <div v-if="item.type === 'map'" class="detail-section">
+                      <h4>🗺️ Map Properties</h4>
+                      <div class="property-list">
+                        <div class="property-item">
+                          <span class="property-label">Name:</span>
+                          <span class="property-value">{{ item.name }}</span>
+                        </div>
+                        <div class="property-item">
+                          <span class="property-label">Size:</span>
+                          <span class="property-value">{{ item.width }}×{{ item.height }}px</span>
+                        </div>
+                        <div class="property-item">
+                          <span class="property-label">Status:</span>
+                          <span class="property-value">{{ item.is_active ? 'Active' : 'Inactive' }}</span>
                         </div>
                       </div>
                     </div>
