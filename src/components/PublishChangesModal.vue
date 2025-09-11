@@ -962,10 +962,6 @@ export default {
             }
             // Refresh from server to get updated state
             await this.loadPendingChanges()
-            // If no changes remain, close modal
-            if (this.totalChanges === 0) {
-              this.$emit('cancel')
-            }
           } catch (error) {
             console.error(`Error moving ${itemName.toLowerCase()} to trash:`, error)
             this.$emit('show-toast', 'Move Failed', `Failed to move ${itemName.toLowerCase()} to trash.`, 'error')

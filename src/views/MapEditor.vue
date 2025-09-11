@@ -2278,8 +2278,11 @@ export default {
           break
         case 'map-restored':
           this.$refs.toast.success('Map Restored', 'Map has been restored from trash.')
+          // Fully refresh data so publish button/count reacts and map returns without waiting for bulk publish
+          this.fetchMaps()
+          this.fetchBuildings()
           this.fetchUnpublishedCount()
-          return
+          break
         case 'map-deletion-published':
           // Avoid racing the modal's refresh; only update the counter
           this.$refs.toast.success('Moved to Trash', 'Map has been moved to trash.')
