@@ -337,54 +337,54 @@
             </div>
           </div>
 
-          <!-- Buildings Restored -->
+          <!-- Items Restored -->
           <div v-if="changes.restored.length > 0" class="change-category">
             <div class="category-header">
               <span class="category-icon">♻️</span>
-              <span class="category-title">Buildings Restored</span>
+              <span class="category-title">Items Restored</span>
               <span class="category-count">{{ changes.restored.length }}</span>
             </div>
             <div class="category-items">
-              <div v-for="building in changes.restored" :key="`restored-${building?.id}`" class="change-item detailed-item">
-                <div class="item-header" @click="toggleItemDetails(`restored-${building?.id}`)">
+              <div v-for="item in changes.restored" :key="`restored-${item?.id}`" class="change-item detailed-item">
+                <div class="item-header" @click="toggleItemDetails(`restored-${item?.id}`)">
                   <div class="item-content">
                     <div class="item-info">
                       <div class="item-title">
                         <div class="item-icon">
                           <img 
-                            v-if="building?.image_path" 
-                            :src="getImageUrl(building?.image_path)" 
-                            :alt="building.building_name + ' marker'" 
+                            v-if="item?.image_path" 
+                            :src="getImageUrl(item?.image_path)" 
+                            :alt="(item.building_name || item.name) + ' icon'" 
                             class="building-marker-icon"
                           >
-                          <span v-else class="default-icon">♻️</span>
+                          <span v-else class="default-icon">{{ item.type === 'map' ? '🗺️' : '🏢' }}</span>
                         </div>
-                        <span class="item-name">{{ building?.building_name || 'Unknown Building' }}</span>
+                        <span class="item-name">{{ item?.building_name || item?.name || 'Unknown Item' }}</span>
                         <span class="item-badge restored">RESTORED</span>
                       </div>
                       <span class="item-details">Restored from trash and ready to publish</span>
                     </div>
                     <div class="item-actions">
                       <button 
-                        @click.stop="undoRestoreBuilding(building?.id)" 
+                        @click.stop="item.type === 'building' ? undoRestoreBuilding(item.id) : undoRestoreMap(item.id)" 
                         class="action-btn undo-btn"
                         title="Undo Restore"
                       >
                         ↩️
                       </button>
                       <button 
-                        @click.stop="publishBuilding(building?.id)" 
+                        @click.stop="item.type === 'building' ? publishBuilding(item.id) : publishMapChange(item.id)" 
                         class="action-btn publish-btn"
-                        title="Publish This Building"
+                        :title="'Publish This ' + (item.type === 'building' ? 'Building' : 'Map')"
                       >
                         📤
                       </button>
                       <button 
-                        @click.stop="toggleItemDetails(`restored-${building?.id}`)"
+                        @click.stop="toggleItemDetails(`restored-${item?.id}`)"
                         class="action-btn details-btn"
-                        :title="expandedItems[`restored-${building?.id}`] ? 'Hide Details' : 'Show Details'"
+                        :title="expandedItems[`restored-${item?.id}`] ? 'Hide Details' : 'Show Details'"
                       >
-                        {{ expandedItems[`restored-${building?.id}`] ? '📖' : '📄' }}
+                        {{ expandedItems[`restored-${item?.id}`] ? '📖' : '📄' }}
                       </button>
                     </div>
                   </div>
@@ -871,27 +871,35 @@ export default {
               type: 'map'
             })
           } else if (map.published_data) {
-            const currentData = {
-              name: map.name,
-              image_path: map.image_path,
-              width: map.width,
-              height: map.height,
-              is_active: map.is_active
-            }
-            
-            // Check for specific changes
-            if (currentData.is_active !== map.published_data.is_active) {
-              this.changes.mapChanges.push({
-                id: map.id,
-                description: currentData.is_active ? 'Map Activated' : 'Map Deactivated',
-                details: `"${map.name}" is now ${currentData.is_active ? 'active' : 'inactive'}`
+            // Check if it's a restoration (was deleted but now restored)
+            if (map.published_data.pending_deletion && !map.pending_deletion) {
+              this.changes.restored.push({
+                ...map,
+                type: 'map'
               })
-            } else if (JSON.stringify(currentData) !== JSON.stringify(map.published_data)) {
-              this.changes.mapChanges.push({
-                id: map.id,
-                description: 'Map Properties Updated',
-                details: `"${map.name}" has been modified`
-              })
+            } else {
+              const currentData = {
+                name: map.name,
+                image_path: map.image_path,
+                width: map.width,
+                height: map.height,
+                is_active: map.is_active
+              }
+              
+              // Check for specific changes
+              if (currentData.is_active !== map.published_data.is_active) {
+                this.changes.mapChanges.push({
+                  id: map.id,
+                  description: currentData.is_active ? 'Map Activated' : 'Map Deactivated',
+                  details: `"${map.name}" is now ${currentData.is_active ? 'active' : 'inactive'}`
+                })
+              } else if (JSON.stringify(currentData) !== JSON.stringify(map.published_data)) {
+                this.changes.mapChanges.push({
+                  id: map.id,
+                  description: 'Map Properties Updated',
+                  details: `"${map.name}" has been modified`
+                })
+              }
             }
           } else if (!map.is_published) {
             // New map
@@ -1007,6 +1015,27 @@ export default {
         'Cancel'
       )
     },
+
+    async undoRestoreMap(mapId) {
+      this.showConfirmation(
+        'Undo Restore',
+        'Are you sure you want to undo the restore and move this map back to trash?',
+        async () => {
+          try {
+            await axios.delete(`/map/${mapId}`)
+            this.$emit('change-processed', { type: 'map-deleted', id: mapId })
+            this.loadPendingChanges() // Refresh the changes list
+            this.$refs.toast?.success('Moved to Trash', 'Map has been moved back to trash.')
+          } catch (error) {
+            console.error('Error undoing restore:', error)
+            this.$refs.toast?.error('Move Failed', 'Failed to move map back to trash.')
+          }
+        },
+        'warning',
+        'Move to Trash',
+        'Cancel'
+      )
+    },
     
     async revertBuilding(buildingId) {
       this.showConfirmation(
@@ -1042,15 +1071,18 @@ export default {
     
     async restoreMap(mapId) {
       try {
+        console.log('Restoring map:', mapId)
         // For maps marked for deletion, we need to unmark the pending_deletion flag
-        await axios.put(`/map/${mapId}`, {
+        const response = await axios.put(`/map/${mapId}`, {
           pending_deletion: false
         })
+        console.log('Map restore response:', response.data)
         this.$emit('change-processed', { type: 'map-restored', id: mapId })
-        this.loadPendingChanges() // Refresh the changes list
+        await this.loadPendingChanges() // Refresh the changes list
+        this.$refs.toast?.success('Map Restored', 'Map has been restored successfully.')
       } catch (error) {
         console.error('Error restoring map:', error)
-        this.$emit('error', 'Failed to restore map')
+        this.$refs.toast?.error('Restore Failed', 'Failed to restore map.')
       }
     },
     
