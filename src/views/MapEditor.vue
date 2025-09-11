@@ -2275,6 +2275,10 @@ export default {
         case 'map-published':
           this.$refs.toast.success('Map Published', 'Map has been published to the app.')
           break
+        case 'map-restored':
+          this.$refs.toast.success('Map Restored', 'Map has been restored from trash.')
+          this.fetchUnpublishedCount()
+          return
         case 'map-deletion-published':
           // Avoid racing the modal's refresh; only update the counter
           this.$refs.toast.success('Moved to Trash', 'Map has been moved to trash.')

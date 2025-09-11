@@ -82,6 +82,13 @@
                     </div>
                     <div class="item-actions">
                       <button 
+                        @click.stop="revertBuilding(building?.id)" 
+                        class="action-btn revert-btn"
+                        title="Revert Building Changes"
+                      >
+                        ↩️
+                      </button>
+                      <button 
                         @click.stop="publishBuilding(building?.id)" 
                         class="action-btn publish-btn"
                         title="Publish This Building"
