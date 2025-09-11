@@ -507,25 +507,6 @@
               <input v-model="mapForm.name" required class="modern-input" placeholder="Enter map name">
   </div>
             
-            <div class="modern-form-group">
-              <label class="modern-label">Width (pixels)</label>
-              <input type="number" v-model="mapForm.width" required min="100" max="10000" class="modern-input" value="1260">
-              <small class="helper-text">Standard width: 1260px | Test: 5500px</small>
-            </div>
-            
-            <div class="modern-form-group">
-              <label class="modern-label">Height (pixels)</label>
-              <input type="number" v-model="mapForm.height" required min="100" max="10000" class="modern-input" value="599">
-              <small class="helper-text">Standard height: 599px | Test: 3450px</small>
-            </div>
-            
-            <div class="modern-form-group">
-              <label class="modern-label">Quick Presets</label>
-              <div class="preset-buttons">
-                <button type="button" @click="setMapDimensions(1260, 599)" class="modern-preset-btn">Standard (1260×599)</button>
-                <button type="button" @click="setMapDimensions(5500, 3450)" class="modern-preset-btn">High-Res Test (5500×3450)</button>
-              </div>
-            </div>
             
             <div class="modern-form-group">
               <label class="modern-label">Map Image</label>
@@ -822,8 +803,8 @@ export default {
       editingLayoutSnapshot: null,
       mapForm: {
         name: '',
-        width: '1260',
-        height: '599',
+        width: '5500',
+        height: '2700',
         image: null,
         image_path: null
       },
@@ -1767,8 +1748,8 @@ export default {
       this.editingMap = null
       this.mapForm = {
         name: '',
-        width: '',
-        height: '',
+        width: '5500',
+        height: '2700',
         image: null,
         image_path: null
       }
@@ -1779,10 +1760,6 @@ export default {
       })
     },
     
-    setMapDimensions(width, height) {
-      this.mapForm.width = width.toString()
-      this.mapForm.height = height.toString()
-    },
     
     getImagePath(building) {
       // Debug data coming from backend
@@ -3602,17 +3579,6 @@ export default {
   font-style: italic;
 }
 
-.preset-buttons {
-  display: flex;
-  gap: 8px;
-  margin-top: 8px;
-}
-
-.preset-buttons .btn-secondary.small {
-  padding: 6px 12px;
-  font-size: 12px;
-  flex: 1;
-}
 
 .building-modal {
   max-width: 600px; /* Wider to accommodate the map picker */
@@ -4776,10 +4742,6 @@ export default {
   color: #334155;
 }
 
-.preset-buttons {
-  display: flex;
-  gap: 8px;
-}
 
 /* Modern Employee Section */
 .section-subtitle {
@@ -5325,9 +5287,6 @@ export default {
     right: -100vw;
   }
   
-  .preset-buttons {
-    flex-direction: column;
-  }
   
   .modern-form-actions {
     flex-direction: column;

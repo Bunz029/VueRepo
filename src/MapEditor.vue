@@ -72,26 +72,6 @@
             </div>
           </div>
 
-          <div class="form-group">
-            <label>Dimensions</label>
-            <div class="dimensions-input">
-              <input 
-                type="number" 
-                v-model="mapForm.width" 
-                required
-                min="1"
-                placeholder="Width"
-              >
-              <span>x</span>
-              <input 
-                type="number" 
-                v-model="mapForm.height" 
-                required
-                min="1"
-                placeholder="Height"
-              >
-            </div>
-          </div>
 
           <div class="form-group">
             <label class="checkbox-label">
@@ -130,8 +110,8 @@ export default {
       mapForm: {
         name: '',
         image_path: '',
-        width: '',
-        height: '',
+        width: '5500',
+        height: '2700',
         is_active: false
       }
     }
@@ -183,8 +163,8 @@ export default {
       const formData = new FormData()
       formData.append('image', file)
       formData.append('name', this.mapForm.name || 'Temporary Name')
-      formData.append('width', this.mapForm.width || 800)
-      formData.append('height', this.mapForm.height || 600)
+      formData.append('width', this.mapForm.width || 5500)
+      formData.append('height', this.mapForm.height || 2700)
 
       try {
         const response = await axios.post('/map', formData, {
@@ -230,8 +210,8 @@ export default {
       this.mapForm = {
         name: '',
         image_path: '',
-        width: '',
-        height: '',
+        width: '5500',
+        height: '2700',
         is_active: false
       }
     }
@@ -345,15 +325,6 @@ export default {
   border-radius: 4px;
 }
 
-.dimensions-input {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.dimensions-input input {
-  width: 100px;
-}
 
 .image-preview {
   margin-top: 1rem;
