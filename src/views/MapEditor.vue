@@ -989,8 +989,11 @@ export default {
     async fetchMaps() {
       try {
         const response = await axios.get('/map')
-        // Only show published maps in the layout panel (exclude unpublished new maps)
-        this.maps = (response.data || []).filter(map => map.is_published)
+        // Show published maps and restored maps (not pending deletion)
+        // Exclude only truly new unpublished maps that have never been published
+        this.maps = (response.data || []).filter(map => 
+          map.is_published || (map.published_data && !map.pending_deletion)
+        )
         
         // Find and set active map
         const activeMap = this.maps.find(map => map.is_active)
