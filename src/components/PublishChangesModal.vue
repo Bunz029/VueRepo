@@ -82,13 +82,6 @@
                     </div>
                     <div class="item-actions">
                       <button 
-                        @click.stop="moveToTrash('building', building?.id)" 
-                        class="action-btn delete-btn"
-                        title="Move to Trash"
-                      >
-                        🗑️
-                      </button>
-                      <button 
                         @click.stop="publishBuilding(building?.id)" 
                         class="action-btn publish-btn"
                         title="Publish This Building"
@@ -611,13 +604,6 @@
                     >
                       ↩️
                     </button>
-                      <button 
-                        @click="moveToTrash('map', change.id)" 
-                        class="action-btn delete-btn"
-                        title="Move to Trash"
-                      >
-                        🗑️
-                      </button>
                     <button 
                       @click="publishMapChange(change.id)" 
                       class="action-btn publish-btn"
@@ -934,12 +920,13 @@ export default {
         `Are you sure you want to move this ${itemName.toLowerCase()} to trash? You can restore it later from the Trash section.`,
         async () => {
           try {
+            // For items marked for deletion, we need to publish their deletion to move them to trash
             if (itemType === 'building') {
-              await axios.delete(`/buildings/${itemId}`)
-              this.$emit('change-processed', { type: 'building-deleted', id: itemId })
+              await axios.post(`/publish/building/${itemId}`)
+              this.$emit('change-processed', { type: 'building-deletion-published', id: itemId })
             } else if (itemType === 'map') {
-              await axios.delete(`/map/${itemId}`)
-              this.$emit('change-processed', { type: 'map-deleted', id: itemId })
+              await axios.post(`/publish/map/${itemId}`)
+              this.$emit('change-processed', { type: 'map-deletion-published', id: itemId })
             }
             this.loadPendingChanges() // Refresh the changes list
             this.$refs.toast?.success('Moved to Trash', `${itemName} has been moved to trash successfully.`)
