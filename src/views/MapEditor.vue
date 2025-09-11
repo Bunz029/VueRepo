@@ -2255,7 +2255,7 @@ export default {
       
       switch (type) {
         case 'building-deleted':
-          this.$refs.toast.success('Building Deleted', 'Building has been permanently deleted.')
+          this.$refs.toast.success('Moved to Trash', 'Building has been moved to trash.')
           break
         case 'building-restored':
           this.$refs.toast.success('Building Restored', 'Building has been restored from trash.')
@@ -2267,14 +2267,19 @@ export default {
           this.$refs.toast.success('Building Published', 'Building has been published to the app.')
           break
         case 'building-deletion-published':
-          this.$refs.toast.success('Deletion Published', 'Building deletion has been published to the app.')
+          this.$refs.toast.success('Moved to Trash', 'Building has been moved to trash.')
           break
         case 'map-reverted':
           this.$refs.toast.success('Map Changes Reverted', 'Map changes have been reverted.')
           break
         case 'map-published':
-          this.$refs.toast.success('Map Published', 'Map changes have been published to the app.')
+          this.$refs.toast.success('Map Published', 'Map has been published to the app.')
           break
+        case 'map-deletion-published':
+          // Avoid racing the modal's refresh; only update the counter
+          this.$refs.toast.success('Moved to Trash', 'Map has been moved to trash.')
+          this.fetchUnpublishedCount()
+          return
       }
       
       // Refresh data and unpublished count

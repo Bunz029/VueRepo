@@ -5,7 +5,7 @@
       <div class="modal-header">
         <div class="header-icon">⚠️</div>
         <div class="header-content">
-          <h2 class="modal-title">You're about to publish changes to the active map</h2>
+          <h2 class="modal-title">You're about to publish changes to the system and active map</h2>
           <p class="modal-subtitle">These changes will reflect in the live app after publishing.</p>
         </div>
       </div>
@@ -214,8 +214,9 @@
                         @click.stop="moveToTrash(item.type, item.id)" 
                         class="action-btn confirm-delete-btn"
                         title="Move to Trash"
+                        style="width:auto;padding:0 10px"
                       >
-                        🗑️
+                        🗑️ <span>Move to trash</span>
                       </button>
                       <button 
                         @click.stop="toggleItemDetails(`deleted-${item.id}`)"
@@ -798,14 +799,24 @@ export default {
     },
     async loadPendingChanges() {
       try {
-        const response = await axios.get('/publish/unpublished')
-        this.categorizeChanges(response.data)
+        // Fetch unpublished changes and current trash to avoid showing trashed items in pending list
+        const [unpublishedRes, trashRes] = await Promise.all([
+          axios.get('/publish/unpublished'),
+          axios.get('/trash/')
+        ])
+
+        const trashedBuildingIds = new Set((trashRes?.data?.buildings || []).map(i => i.item_id || i.id))
+        const trashedMapIds = new Set((trashRes?.data?.maps || []).map(i => i.item_id || i.id))
+
+        this.categorizeChanges(unpublishedRes.data, { trashedBuildingIds, trashedMapIds })
       } catch (error) {
         console.error('Error loading pending changes:', error)
         this.$emit('error', 'Failed to load pending changes')
       }
     },
-    categorizeChanges(data) {
+    categorizeChanges(data, opts = {}) {
+      const trashedBuildingIds = opts.trashedBuildingIds || new Set()
+      const trashedMapIds = opts.trashedMapIds || new Set()
       // Reset changes
       this.changes = {
         added: [],
@@ -819,6 +830,8 @@ export default {
       // Categorize buildings
       if (data.buildings) {
         data.buildings.forEach(building => {
+          // Skip if already in trash
+          if (trashedBuildingIds.has(building.id)) return
           if (building.pending_deletion) {
             this.changes.deleted.push({
               ...building,
@@ -842,6 +855,8 @@ export default {
       // Categorize maps
       if (data.maps) {
         data.maps.forEach(map => {
+          // Skip if already in trash
+          if (trashedMapIds.has(map.id)) return
           if (map.pending_deletion) {
             // Map marked for deletion - add to deleted section like buildings
             this.changes.deleted.push({
@@ -928,11 +943,25 @@ export default {
               await axios.post(`/publish/map/${itemId}`)
               this.$emit('change-processed', { type: 'map-deletion-published', id: itemId })
             }
-            this.loadPendingChanges() // Refresh the changes list
-            this.$refs.toast?.success('Moved to Trash', `${itemName} has been moved to trash successfully.`)
+            // Optimistically remove from local list for immediate feedback
+            this.changes.deleted = this.changes.deleted.filter(i => !(i.type === itemType && i.id === itemId))
+            // Also remove from other sections where it may appear
+            if (itemType === 'map') {
+              this.changes.mapChanges = this.changes.mapChanges.filter(c => c.id !== itemId)
+            } else if (itemType === 'building') {
+              this.changes.added = this.changes.added.filter(b => b.id !== itemId)
+              this.changes.restored = this.changes.restored.filter(b => b.id !== itemId)
+              this.changes.edited = this.changes.edited.filter(b => b.id !== itemId)
+            }
+            // Refresh from server to get updated state
+            await this.loadPendingChanges()
+            // If no changes remain, close modal
+            if (this.totalChanges === 0) {
+              this.$emit('cancel')
+            }
           } catch (error) {
             console.error(`Error moving ${itemName.toLowerCase()} to trash:`, error)
-            this.$refs.toast?.error('Move Failed', `Failed to move ${itemName.toLowerCase()} to trash.`)
+            this.$emit('show-toast', 'Move Failed', `Failed to move ${itemName.toLowerCase()} to trash.`, 'error')
           }
         },
         'warning',
@@ -1047,7 +1076,13 @@ export default {
     async publishMapChange(mapId) {
       try {
         await axios.post(`/publish/map/${mapId}`)
-        this.$emit('change-processed', { type: 'map-published', id: mapId })
+        // Determine if this was a deletion publish: if it disappeared from deleted list, treat as moved to trash
+        const wasDeleted = (this.changes.deleted || []).some(i => i.type === 'map' && i.id === mapId)
+        if (wasDeleted) {
+          this.$emit('change-processed', { type: 'map-deletion-published', id: mapId })
+        } else {
+          this.$emit('change-processed', { type: 'map-published', id: mapId })
+        }
         this.loadPendingChanges() // Refresh the changes list
       } catch (error) {
         console.error('Error publishing map:', error)

@@ -66,9 +66,9 @@
             <!-- Building Marker Icon -->
             <div v-if="item.item_type === 'building'" class="building-marker-container">
               <img 
-                v-if="item.item_data.image_path" 
-                :src="getImageUrl(item.item_data.image_path)" 
-                :alt="item.item_data.building_name + ' marker'" 
+                v-if="resolvedBuildingMarker(item.item_data)" 
+                :src="resolvedBuildingMarker(item.item_data)" 
+                :alt="(item.item_data.building_name || 'Building') + ' marker'" 
                 class="building-marker-icon"
               >
               <div v-else class="default-building-icon">🏢</div>
@@ -126,9 +126,9 @@
           <div class="modal-item-preview">
             <div v-if="itemToRestore?.item_type === 'building'" class="modal-building-marker">
               <img 
-                v-if="itemToRestore?.item_data.image_path" 
-                :src="getImageUrl(itemToRestore.item_data.image_path)" 
-                :alt="itemToRestore.item_data.building_name + ' marker'" 
+                v-if="resolvedBuildingMarker(itemToRestore?.item_data)" 
+                :src="resolvedBuildingMarker(itemToRestore.item_data)" 
+                :alt="(itemToRestore.item_data.building_name || 'Building') + ' marker'" 
                 class="modal-marker-icon"
               >
               <div v-else class="modal-default-icon">🏢</div>
@@ -237,6 +237,13 @@ export default {
     this.fetchMaps()
   },
   methods: {
+    resolvedBuildingMarker(itemData) {
+      if (!itemData) return null
+      const marker = itemData.marker_image || itemData.image_path || ''
+      if (!marker) return null
+      if (marker.startsWith('http')) return marker
+      return this.getImageUrl(marker)
+    },
     async fetchDeletedItems() {
       try {
         this.loading = true
