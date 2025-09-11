@@ -1077,9 +1077,18 @@ export default {
           pending_deletion: false
         })
         console.log('Map restore response:', response.data)
-        this.$emit('change-processed', { type: 'map-restored', id: mapId })
+        // Immediately publish the restoration so counters update and no pending change remains
+        try {
+          await axios.post(`/publish/map/${mapId}`)
+          this.$emit('change-processed', { type: 'map-published', id: mapId })
+          this.$refs.toast?.success('Map Restored', 'Map has been restored and published successfully.')
+        } catch (pubErr) {
+          console.error('Error auto-publishing restored map:', pubErr)
+          // Fallback: still emit restored so UI can refresh; badge may still show pending
+          this.$emit('change-processed', { type: 'map-restored', id: mapId })
+          this.$refs.toast?.info('Map Restored', 'Restored map needs publishing. Click Publish to apply.')
+        }
         await this.loadPendingChanges() // Refresh the changes list
-        this.$refs.toast?.success('Map Restored', 'Map has been restored successfully.')
       } catch (error) {
         console.error('Error restoring map:', error)
         this.$refs.toast?.error('Restore Failed', 'Failed to restore map.')
