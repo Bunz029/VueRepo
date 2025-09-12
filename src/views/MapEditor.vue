@@ -112,7 +112,7 @@
                   left: `${building.x_coordinate}px`, 
                   top: `${building.y_coordinate}px`
                 }"
-                @click.stop="selectBuilding(building)"
+                @click.stop="handleBuildingClick($event, building)"
               >
                 <div class="marker-container">
                   <img 
@@ -142,7 +142,7 @@
                 :style="{ 
                   left: `${buildingForm.x_coordinate}px`, 
                   top: `${buildingForm.y_coordinate}px`,
-                  transform: `translate(-50%, -50%) scale(${Math.max(0.3, Math.min(1.2, 0.8 / this.mapScale))})`
+                  transform: `translate(-50%, -50%)`
                 }"
               >
                 <div class="marker-container">
@@ -399,6 +399,7 @@
           <div class="modern-form-group map-instructions">
             <h3 class="section-subtitle">Position on Map</h3>
             <p class="instruction-text">Click directly on the map to set coordinates, or enter them manually below.</p>
+            <p class="instruction-text small">💡 Building markers use smart click detection - only the visible parts of images are clickable.</p>
           </div>
           
           <div class="modern-form-group coordinate-inputs">
@@ -409,6 +410,9 @@
             <div>
               <label class="modern-label">Y Coordinate</label>
               <input type="number" v-model="buildingForm.y_coordinate" required class="modern-input">
+            </div>
+            <div class="coordinate-hint">
+              <small class="hint-text">💡 Use arrow keys to fine-tune position (Shift + arrow for 10px steps)</small>
             </div>
           </div>
           
@@ -857,9 +861,13 @@ export default {
   },
   mounted() {
     window.addEventListener('click', this.handleOutsideClick)
+    // Add keyboard event listeners for arrow key controls
+    document.addEventListener('keydown', this.handleKeyDown)
   },
   beforeUnmount() {
     window.removeEventListener('click', this.handleOutsideClick)
+    // Remove keyboard event listeners
+    document.removeEventListener('keydown', this.handleKeyDown)
     this.stopMapCountdown()
     this.stopBuildingCountdown()
   },
@@ -916,6 +924,110 @@ export default {
   },
 
   methods: {
+    // Helper function to check if a pixel is transparent
+    async isPixelTransparent(imageSrc, x, y, imageWidth, imageHeight) {
+      return new Promise((resolve) => {
+        const img = new Image()
+        
+        // Try with CORS first, fallback without if it fails
+        img.crossOrigin = 'anonymous'
+        
+        img.onload = () => {
+          try {
+            const canvas = document.createElement('canvas')
+            const ctx = canvas.getContext('2d')
+            canvas.width = imageWidth
+            canvas.height = imageHeight
+            
+            // Draw the image to canvas
+            ctx.drawImage(img, 0, 0, imageWidth, imageHeight)
+            
+            // Get pixel data at the clicked position
+            const pixelData = ctx.getImageData(x, y, 1, 1).data
+            const alpha = pixelData[3] // Alpha channel (0-255)
+            
+            // Consider pixel transparent if alpha is less than 128 (50% opacity)
+            resolve(alpha < 128)
+          } catch (error) {
+            console.warn('Canvas pixel detection failed, defaulting to non-transparent:', error)
+            resolve(false) // Default to non-transparent on canvas error
+          }
+        }
+        
+        img.onerror = () => {
+          // If CORS fails, try without CORS
+          if (img.crossOrigin === 'anonymous') {
+            img.crossOrigin = null
+            img.src = imageSrc
+            return
+          }
+          console.warn('Image loading failed for pixel detection, defaulting to non-transparent')
+          resolve(false) // Default to non-transparent on error
+        }
+        
+        img.src = imageSrc
+      })
+    },
+
+    // Enhanced click handler for building markers with transparent pixel detection
+    async handleBuildingClick(event, building) {
+      if (!building.image_path) {
+        // If no image, use the original click behavior
+        this.selectBuilding(building)
+        return
+      }
+
+      const img = event.target
+      
+      // Ensure we have valid image dimensions
+      if (!img.naturalWidth || !img.naturalHeight) {
+        console.warn('Image not fully loaded, defaulting to non-transparent')
+        this.selectBuilding(building)
+        return
+      }
+      
+      const rect = img.getBoundingClientRect()
+      
+      // Calculate click position relative to the image
+      const clickX = event.clientX - rect.left
+      const clickY = event.clientY - rect.top
+      
+      // Ensure click is within image bounds
+      if (clickX < 0 || clickY < 0 || clickX >= rect.width || clickY >= rect.height) {
+        return // Click outside image bounds
+      }
+      
+      // Scale click coordinates to match the actual image dimensions
+      const scaleX = img.naturalWidth / rect.width
+      const scaleY = img.naturalHeight / rect.height
+      const imageX = Math.floor(clickX * scaleX)
+      const imageY = Math.floor(clickY * scaleY)
+      
+      // Ensure coordinates are within image bounds
+      if (imageX < 0 || imageY < 0 || imageX >= img.naturalWidth || imageY >= img.naturalHeight) {
+        return // Coordinates outside image bounds
+      }
+      
+      try {
+        // Check if the clicked pixel is transparent
+        const isTransparent = await this.isPixelTransparent(
+          img.src, 
+          imageX, 
+          imageY, 
+          img.naturalWidth, 
+          img.naturalHeight
+        )
+        
+        // Only trigger building selection if clicked on non-transparent pixel
+        if (!isTransparent) {
+          this.selectBuilding(building)
+        }
+      } catch (error) {
+        console.warn('Pixel detection failed, defaulting to non-transparent:', error)
+        this.selectBuilding(building)
+      }
+    },
+
     async enterLayoutEditModeFor(map) {
       try {
         if (!map || !map.id) return
@@ -1403,6 +1515,7 @@ export default {
         formData.append('width', parseInt(this.buildingForm.image_width))
         formData.append('height', parseInt(this.buildingForm.image_height))
         
+        
         // Add map_id
         const mapId = this.buildingForm.map_id || (this.activeMap ? this.activeMap.id : null)
         if (!mapId) {
@@ -1887,6 +2000,45 @@ export default {
     setImageSize(width, height) {
       this.buildingForm.image_width = width
       this.buildingForm.image_height = height
+    },
+
+    handleKeyDown(event) {
+      // Only handle arrow keys when building modal is open and coordinates are set
+      if (!this.showAddBuildingModal && !this.editingBuilding) return
+      if (!this.buildingForm.x_coordinate || !this.buildingForm.y_coordinate) return
+      
+      // Check if we're in an input field - don't handle arrow keys there
+      if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') return
+      
+      const step = event.shiftKey ? 10 : 1 // Shift + arrow = 10px steps, normal arrow = 1px steps
+      let newX = parseInt(this.buildingForm.x_coordinate)
+      let newY = parseInt(this.buildingForm.y_coordinate)
+      
+      switch (event.key) {
+        case 'ArrowUp':
+          event.preventDefault()
+          newY = Math.max(0, newY - step)
+          break
+        case 'ArrowDown':
+          event.preventDefault()
+          newY = Math.min(this.activeMap?.height || 1000, newY + step)
+          break
+        case 'ArrowLeft':
+          event.preventDefault()
+          newX = Math.max(0, newX - step)
+          break
+        case 'ArrowRight':
+          event.preventDefault()
+          newX = Math.min(this.activeMap?.width || 1000, newX + step)
+          break
+        default:
+          return // Don't prevent default for other keys
+      }
+      
+      // Update coordinates
+      this.buildingForm.x_coordinate = newX
+      this.buildingForm.y_coordinate = newY
+      this.newBuildingPosition = { x: newX, y: newY }
     },
     
     // Map interaction methods
@@ -4063,6 +4215,18 @@ export default {
   font-weight: 500;
 }
 
+.coordinate-hint {
+  grid-column: 1 / -1;
+  margin-top: 8px;
+  text-align: center;
+}
+
+.hint-text {
+  color: #6b7280;
+  font-size: 0.8em;
+  font-style: italic;
+}
+
 /* Improved spacing for employee section in wider modal */
 .employee-info {
   gap: 16px; /* Increased from 12px */
@@ -4862,6 +5026,12 @@ export default {
   color: #64748b;
   margin: 0;
   line-height: 1.5;
+}
+
+.instruction-text.small {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 4px;
 }
 
 /* Image Previews */

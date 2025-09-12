@@ -1038,23 +1038,51 @@ export default {
     },
     
     async revertBuilding(buildingId) {
-      this.showConfirmation(
-        'Revert Changes',
-        'Are you sure you want to revert all changes to this building? This will restore it to its last published state.',
-        async () => {
-          try {
-            await axios.post(`/publish/revert/building/${buildingId}`)
-            this.$emit('change-processed', { type: 'building-reverted', id: buildingId })
-            this.loadPendingChanges() // Refresh the changes list
-          } catch (error) {
-            console.error('Error reverting building:', error)
-            this.$emit('error', 'Failed to revert building changes')
-          }
-        },
-        'warning',
-        'Revert',
-        'Cancel'
-      )
+      // Find the building to determine if it's new or edited
+      const building = this.changes.added.find(b => b.id === buildingId) || 
+                      this.changes.edited.find(b => b.id === buildingId)
+      
+      if (building && this.changes.added.includes(building)) {
+        // This is a newly added building - permanently delete it (like undo)
+        this.showConfirmation(
+          'Revert Building',
+          'Are you sure you want to revert this newly added building? This will permanently remove it.',
+          async () => {
+            try {
+              await axios.delete(`/buildings/${buildingId}`)
+              // Remove from local changes immediately for instant feedback
+              this.changes.added = this.changes.added.filter(b => b.id !== buildingId)
+              this.$emit('change-processed', { type: 'building-reverted', id: buildingId })
+              // Don't reload changes - just remove from local list
+            } catch (error) {
+              console.error('Error reverting building:', error)
+              this.$emit('error', 'Failed to revert building')
+            }
+          },
+          'warning',
+          'Revert',
+          'Cancel'
+        )
+      } else {
+        // This is an edited building - revert to published state
+        this.showConfirmation(
+          'Revert Changes',
+          'Are you sure you want to revert all changes to this building? This will restore it to its last published state.',
+          async () => {
+            try {
+              await axios.post(`/publish/revert/building/${buildingId}`)
+              this.$emit('change-processed', { type: 'building-reverted', id: buildingId })
+              this.loadPendingChanges() // Refresh the changes list
+            } catch (error) {
+              console.error('Error reverting building:', error)
+              this.$emit('error', 'Failed to revert building changes')
+            }
+          },
+          'warning',
+          'Revert',
+          'Cancel'
+        )
+      }
     },
     
     
