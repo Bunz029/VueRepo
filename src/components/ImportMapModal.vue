@@ -26,7 +26,7 @@
           <div class="instructions-content">
             <div class="instruction-item">
               <div class="instruction-number">1</div>
-              <div class="instruction-text">Select a previously exported map file (.json)</div>
+              <div class="instruction-text">Select a previously exported map ZIP file (.zip)</div>
             </div>
             <div class="instruction-item">
               <div class="instruction-number">2</div>
@@ -61,7 +61,7 @@
             <input 
               ref="fileInput"
               type="file" 
-              accept=".json" 
+              accept=".zip" 
               @change="handleFileSelect"
               style="display: none"
             >
@@ -69,7 +69,7 @@
             <div v-if="!selectedFile" class="upload-content">
               <div class="upload-icon">📁</div>
               <div class="upload-text">
-                <h4>Drop your map export file here</h4>
+                <h4>Drop your map export ZIP file here</h4>
                 <p>or click to browse files</p>
               </div>
               <button class="browse-button">Browse Files</button>
@@ -178,11 +178,11 @@ export default {
 
     handleFileSelect(event) {
       const file = event.target.files[0]
-      if (file && file.type === 'application/json') {
+      if (file && (file.type === 'application/zip' || file.name.endsWith('.zip'))) {
         this.selectedFile = file
         this.previewFile(file)
       } else {
-        this.$emit('show-toast', 'Invalid File', 'Please select a valid JSON file', 'error')
+        this.$emit('show-toast', 'Invalid File', 'Please select a valid ZIP file', 'error')
       }
     },
 
@@ -191,11 +191,11 @@ export default {
       const files = event.dataTransfer.files
       if (files.length > 0) {
         const file = files[0]
-        if (file.type === 'application/json') {
+        if (file.type === 'application/zip' || file.name.endsWith('.zip')) {
           this.selectedFile = file
           this.previewFile(file)
         } else {
-          this.$emit('show-toast', 'Invalid File', 'Please drop a valid JSON file', 'error')
+          this.$emit('show-toast', 'Invalid File', 'Please drop a valid ZIP file', 'error')
         }
       }
     },
@@ -210,21 +210,14 @@ export default {
 
     async previewFile(file) {
       try {
-        const content = await this.readFileAsText(file)
-        const data = JSON.parse(content)
-        
-        if (data.map && data.map.name) {
-          this.importPreview = {
-            mapName: data.map.name,
-            dimensions: `${data.map.width || 0} × ${data.map.height || 0}`,
-            buildingsCount: data.buildings ? data.buildings.length : 0,
-            roomsCount: data.rooms ? data.rooms.length : 0,
-            exportedAt: data.export_info?.exported_at ? 
-              new Date(data.export_info.exported_at).toLocaleDateString() : 'Unknown'
-          }
-        } else {
-          this.$emit('show-toast', 'Invalid File', 'This is not a valid map export file', 'error')
-          this.clearSelectedFile()
+        // For ZIP files, we'll show basic file info
+        // The actual preview will be done on the server side
+        this.importPreview = {
+          mapName: 'Map Export (ZIP)',
+          dimensions: 'Will be determined on import',
+          buildingsCount: 'Will be determined on import',
+          roomsCount: 'Will be determined on import',
+          exportedAt: 'Will be determined on import'
         }
       } catch (error) {
         this.$emit('show-toast', 'File Error', 'Could not read the selected file', 'error')
@@ -240,10 +233,8 @@ export default {
 
       this.importing = true
       try {
-        const content = await this.readFileAsText(this.selectedFile)
-        const mapData = JSON.parse(content)
-        
-        this.$emit('import', mapData)
+        // Pass the file directly to the parent component
+        this.$emit('import', this.selectedFile)
       } catch (error) {
         this.$emit('show-toast', 'Import Error', 'Failed to process the selected file', 'error')
       } finally {

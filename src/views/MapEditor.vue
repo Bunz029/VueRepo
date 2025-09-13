@@ -2626,20 +2626,20 @@ export default {
       this.showImportModal = false
     },
 
-    async handleImportMap(mapData) {
+    async handleImportMap(file) {
       this.importing = true
       try {
-        // Validate the file structure
-        if (!mapData.map || !mapData.map.name) {
-          throw new Error('Invalid map export file format')
-        }
+        const formData = new FormData()
+        formData.append('map_file', file)
 
-        const response = await axios.post('/map-export/import', {
-          map_data: mapData
+        const response = await axios.post('/map-export/import', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
         })
 
         if (response.data.success) {
-          this.$refs.toast.success('Import Successful', `Map "${mapData.map.name}" has been imported successfully`)
+          this.$refs.toast.success('Import Successful', `Map has been imported successfully`)
           this.closeImportModal()
           // Refresh the maps list
           await this.fetchMaps()
