@@ -2590,17 +2590,22 @@ export default {
 
       this.exporting = true
       try {
-        const response = await axios.get(`/map-export/${map.id}`)
+        const response = await axios.get(`/map-export/${map.id}`, {
+          responseType: 'blob'
+        })
         
-        if (response.data.success) {
-          // Create and download the file
-          const dataStr = JSON.stringify(response.data.data, null, 2)
-          const dataBlob = new Blob([dataStr], { type: 'application/json' })
-          const url = URL.createObjectURL(dataBlob)
+        if (response.status === 200) {
+          // Create blob URL and trigger download
+          const blob = new Blob([response.data], { type: 'application/zip' })
+          const url = window.URL.createObjectURL(blob)
+          
+          // Generate filename from map name and current date
+          const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-')
+          const filename = `map_export_${map.name.replace(/[^a-zA-Z0-9_-]/g, '_')}_${timestamp}.zip`
           
           const link = document.createElement('a')
           link.href = url
-          link.download = response.data.filename
+          link.download = filename
           document.body.appendChild(link)
           link.click()
           document.body.removeChild(link)
@@ -2608,7 +2613,7 @@ export default {
           
           this.$refs.toast.success('Export Successful', `Map "${map.name}" has been exported successfully`)
         } else {
-          throw new Error(response.data.message || 'Export failed')
+          throw new Error('Export failed')
         }
       } catch (error) {
         console.error('Export error:', error)
