@@ -396,9 +396,7 @@
                   </div>
                   <div class="modern-employee-details">
                     <input v-model="employee.name" placeholder="Employee Name" class="modern-input employee-input">
-                    <input v-model="employee.position" placeholder="Position (e.g., Lecturer, Professor)" class="modern-input employee-input">
-                    <input v-model="employee.department" placeholder="Department (e.g., Physics, Mathematics)" class="modern-input employee-input">
-                    <input v-model="employee.email" placeholder="Email (optional)" class="modern-input employee-input">
+                    <input v-model="employee.phone" placeholder="Contact Number (optional)" class="modern-input employee-input">
                   </div>
                   <div class="modern-employee-actions">
                     <input type="file" @change="handleEmployeeImageUpload($event, index)" accept="image/*" class="hidden-file-input" :id="`employee-image-${index}`">
@@ -639,12 +637,8 @@
               </div>
               <div class="employee-info">
                 <p class="employee-name">{{ emp.employee_name }}</p>
-                <p class="employee-position">
-                  {{ emp.position || '—' }}
-                  <span v-if="emp.department"> · {{ emp.department }}</span>
-                </p>
-                <p class="employee-email">
-                  {{ emp.email || 'Contact info not available' }}
+                <p class="employee-contact">
+                  {{ emp.contact_number || 'Contact info not available' }}
                 </p>
               </div>
             </div>
@@ -1304,9 +1298,7 @@ export default {
         employees: building.employees ? building.employees.map(emp => ({
           id: emp.id,
           name: emp.employee_name,
-          position: emp.position || '',
-          department: emp.department || '',
-          email: emp.email || '',
+          phone: emp.contact_number || '',
           image: null,
           image_preview: emp.employee_image ? 'https://web-production-23886.up.railway.app/storage/' + emp.employee_image : null,
           existing_image: emp.employee_image // Store original image path for preservation
@@ -1424,9 +1416,7 @@ export default {
     addEmployee() {
       this.buildingForm.employees.push({
         name: '',
-        position: '',
-        department: '',
-        email: '',
+        phone: '',
         image: null,
         image_preview: null,
         existing_image: null
@@ -1585,9 +1575,7 @@ export default {
           // Add each employee's data
           validEmployees.forEach((employee, index) => {
             formData.append(`employees[${index}][name]`, employee.name.trim())
-            formData.append(`employees[${index}][position]`, employee.position || '')
-            formData.append(`employees[${index}][department]`, employee.department || '')
-            formData.append(`employees[${index}][email]`, employee.email || '')
+            formData.append(`employees[${index}][contact_number]`, employee.phone || '')
             
             // Include employee ID if editing existing employee (for image preservation)
             if (employee.id) {
@@ -2634,17 +2622,27 @@ export default {
     async handleImportMap(file) {
       this.importing = true
       try {
+        console.log('Starting import process', {
+          fileName: file.name,
+          fileSize: file.size,
+          fileType: file.type
+        })
+
         const formData = new FormData()
         formData.append('map_file', file)
 
+        console.log('Sending import request to /map-export/import')
         const response = await axios.post('/map-export/import', formData, {
           headers: {
             'Content-Type': 'multipart/form-data'
-          }
+          },
+          timeout: 300000 // 5 minutes timeout for large files
         })
 
+        console.log('Import response received', response.data)
+
         if (response.data.success) {
-          this.$refs.toast.success('Import Successful', `Map has been imported successfully`)
+          this.$refs.toast.success('Import Successful', `Map "${response.data.map?.name || 'Unknown'}" has been imported successfully`)
           this.closeImportModal()
           // Refresh the maps list
           await this.fetchMaps()
@@ -2653,7 +2651,21 @@ export default {
         }
       } catch (error) {
         console.error('Import error:', error)
-        this.$refs.toast.error('Import Failed', error.response?.data?.message || error.message || 'Failed to import map')
+        let errorMessage = 'Failed to import map'
+        
+        if (error.response?.data?.message) {
+          errorMessage = error.response.data.message
+        } else if (error.message) {
+          errorMessage = error.message
+        } else if (error.code === 'ECONNABORTED') {
+          errorMessage = 'Import timeout - file may be too large or server is busy'
+        } else if (error.response?.status === 413) {
+          errorMessage = 'File too large - please reduce file size and try again'
+        } else if (error.response?.status === 422) {
+          errorMessage = 'Invalid file format - please ensure you are uploading a valid ZIP file'
+        }
+        
+        this.$refs.toast.error('Import Failed', errorMessage)
       } finally {
         this.importing = false
       }
@@ -4165,7 +4177,8 @@ export default {
   color: #666;
   font-size: 0.85rem;
 }
-.emp-email {
+
+.employee-contact {
   color: #444;
   font-size: 0.85rem;
 }

@@ -37,7 +37,6 @@
             </div>
             <div class="room-info">
               <h4 class="room-name">{{ room.name }}</h4>
-              <p class="room-description">{{ room.description || 'No description' }}</p>
             </div>
             <div class="room-actions">
               <button @click="editRoom(room)" class="room-action-btn edit" title="Edit Room">
@@ -88,15 +87,6 @@
           />
         </div>
 
-        <div class="form-group">
-          <label class="form-label">Description</label>
-          <textarea 
-            v-model="roomForm.description" 
-            class="form-textarea" 
-            placeholder="Describe the room and its purpose"
-            rows="3"
-          ></textarea>
-        </div>
 
         <div class="form-group">
           <label class="form-label">360° Panorama Image</label>
@@ -181,7 +171,6 @@ export default {
       roomToDelete: null,
       roomForm: {
         name: '',
-        description: '',
         panorama_file: null,
         panorama_preview: null
       }
@@ -220,7 +209,6 @@ export default {
       this.editingRoom = null
       this.roomForm = {
         name: '',
-        description: '',
         panorama_file: null,
         panorama_preview: null
       }
@@ -238,7 +226,6 @@ export default {
       this.editingRoom = room
       this.roomForm = {
         name: room.name,
-        description: room.description || '',
         panorama_file: null,
         panorama_preview: room.panorama_image_path ? this.getPanoramaUrl(room.panorama_image_path) : null
       }
@@ -257,7 +244,6 @@ export default {
       this.editingRoom = null
       this.roomForm = {
         name: '',
-        description: '',
         panorama_file: null,
         panorama_preview: null
       }
@@ -291,7 +277,6 @@ export default {
         const formData = new FormData()
         formData.append('building_id', this.building.id)
         formData.append('name', this.roomForm.name)
-        formData.append('description', this.roomForm.description || '')
         
         if (this.roomForm.panorama_file) {
           formData.append('panorama_image', this.roomForm.panorama_file)
@@ -302,7 +287,6 @@ export default {
           // For updates, don't send building_id as it's not needed
           const updateFormData = new FormData()
           updateFormData.append('name', this.roomForm.name)
-          updateFormData.append('description', this.roomForm.description || '')
           
           if (this.roomForm.panorama_file) {
             updateFormData.append('panorama_image', this.roomForm.panorama_file)
@@ -546,16 +530,6 @@ export default {
   color: #333;
 }
 
-.room-description {
-  margin: 0;
-  font-size: 14px;
-  color: #666;
-  line-height: 1.4;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
 
 .room-actions {
   padding: 12px 16px;
