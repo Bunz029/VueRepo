@@ -124,6 +124,34 @@
       </form>
     </div>
   </div>
+
+  <!-- Room Delete Confirmation Modal -->
+  <div v-if="showDeleteModal" class="delete-modal-overlay" @click="closeDeleteModal">
+    <div class="delete-modal-content" @click.stop>
+      <!-- Close button -->
+      <button @click="closeDeleteModal" class="delete-modal-close">&times;</button>
+      
+      <div class="delete-modal-header">
+        <div class="delete-modal-icon">⚠️</div>
+        <h3 class="delete-modal-title">Delete Room</h3>
+      </div>
+      
+      <p class="delete-modal-message">
+        Are you sure you want to delete room <strong>{{ roomToDelete ? roomToDelete.name : 'Unknown' }}</strong>? This action cannot be undone.
+      </p>
+      
+      <div class="delete-modal-actions">
+        <div class="delete-modal-buttons">
+          <button @click="closeDeleteModal" class="delete-modal-cancel">
+            Cancel
+          </button>
+          <button @click="confirmDeleteRoom" class="delete-modal-confirm">
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script>
@@ -149,6 +177,8 @@ export default {
       showRoomModal: false,
       editingRoom: null,
       roomSaving: false,
+      showDeleteModal: false,
+      roomToDelete: null,
       roomForm: {
         name: '',
         description: '',
@@ -305,14 +335,25 @@ export default {
       }
     },
 
-    async deleteRoom(room) {
-      if (!confirm(`Are you sure you want to delete "${room.name}"?`)) return
+    deleteRoom(room) {
+      this.roomToDelete = room
+      this.showDeleteModal = true
+    },
+
+    closeDeleteModal() {
+      this.showDeleteModal = false
+      this.roomToDelete = null
+    },
+
+    async confirmDeleteRoom() {
+      if (!this.roomToDelete) return
 
       try {
-        await axios.delete(`/rooms/${room.id}`)
+        await axios.delete(`/rooms/${this.roomToDelete.id}`)
         this.loadRooms()
-        this.$emit('room-deleted', room)
+        this.$emit('room-deleted', this.roomToDelete)
         this.$emit('show-toast', 'Room deleted successfully', 'success')
+        this.closeDeleteModal()
       } catch (error) {
         console.error('Error deleting room:', error)
         this.$emit('show-toast', 'Failed to delete room', 'error')
@@ -722,6 +763,116 @@ export default {
   background: #e9ecef;
 }
 
+/* Delete Modal Styles */
+.delete-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1200;
+}
+
+.delete-modal-content {
+  background: white;
+  border-radius: 12px;
+  width: 400px;
+  max-width: 90%;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  position: relative;
+}
+
+.delete-modal-close {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #666;
+  padding: 5px;
+  border-radius: 50%;
+  transition: background-color 0.2s;
+  z-index: 1;
+}
+
+.delete-modal-close:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.delete-modal-header {
+  padding: 25px 25px 15px 25px;
+  text-align: center;
+  border-bottom: 1px solid #eee;
+}
+
+.delete-modal-icon {
+  font-size: 48px;
+  margin-bottom: 10px;
+}
+
+.delete-modal-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #333;
+}
+
+.delete-modal-message {
+  padding: 20px 25px;
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.5;
+  color: #666;
+  text-align: center;
+}
+
+.delete-modal-actions {
+  padding: 0 25px 25px 25px;
+}
+
+.delete-modal-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.delete-modal-cancel,
+.delete-modal-confirm {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 100px;
+}
+
+.delete-modal-cancel {
+  background: #f8f9fa;
+  color: #666;
+  border: 1px solid #ddd;
+}
+
+.delete-modal-cancel:hover {
+  background: #e9ecef;
+}
+
+.delete-modal-confirm {
+  background: #dc3545;
+  color: white;
+}
+
+.delete-modal-confirm:hover {
+  background: #c82333;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .rooms-grid {
@@ -734,6 +885,11 @@ export default {
   }
   
   .room-edit-modal-content {
+    width: 95%;
+    margin: 10px;
+  }
+
+  .delete-modal-content {
     width: 95%;
     margin: 10px;
   }

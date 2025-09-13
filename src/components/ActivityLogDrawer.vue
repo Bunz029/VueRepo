@@ -370,7 +370,8 @@ export default {
       content += `<div class="detail-item"><span class="label">name:</span> <span class="value">"${target_name}"</span></div>`
 
       if (target_type === 'room') {
-        if (details?.image) content += this.renderKV('  image', details.image)
+        // Hide image path details for rooms as requested
+        // if (details?.image) content += this.renderKV('  image', details.image)
       } else if (target_type === 'building') {
         const { after } = this.getBeforeAfter(details)
         const d = after || details || {}
@@ -407,7 +408,8 @@ export default {
       const details = this.getDetailsObject(log)
       if (log.target_type === 'room') {
         if (details?.name) content += this.renderKV('  name', `"${details.name}"`)
-        if (details?.image) content += this.renderKV('  image', details.image)
+        // Hide image path details for rooms as requested
+        // if (details?.image) content += this.renderKV('  image', details.image)
       } else {
         // Try to get field changes from details (buildings/maps)
         const changes = this.getEditChanges(log)
@@ -532,7 +534,8 @@ export default {
       if (action === 'published' && log.target_type === 'room') {
         // Single room publish
         if (log.target_name) content += `<div class="detail-item"><span class="label">Room:</span> <span class="value">"${log.target_name}"</span></div>`
-        if (details?.image) content += `<div class="detail-item"><span class="label">Image:</span> <span class="value">${details.image}</span></div>`
+        // Hide image path details for rooms as requested
+        // if (details?.image) content += `<div class="detail-item"><span class="label">Image:</span> <span class="value">${details.image}</span></div>`
       } else if (action === 'published') {
         // Show summary counts
         if (details?.total_published) content += `<div class="detail-item"><span class="label">Total:</span> <span class="value">${details.total_published}</span></div>`

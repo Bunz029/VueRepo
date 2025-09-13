@@ -223,6 +223,20 @@
         </button>
       </div>
 
+      <!-- Import Actions -->
+      <div class="import-section">
+        <h4 class="subsection-title">Import Map</h4>
+        <div class="import-actions">
+          <button class="import-btn" @click="openImportModal">
+            <span class="btn-icon">📥</span>
+            <span class="btn-text">Import Map</span>
+          </button>
+        </div>
+        <p class="import-help">
+          Import restores a previously exported map layout with all buildings, rooms, and images.
+        </p>
+      </div>
+
       <div class="maps-grid">
             <!-- Debug Info -->
             <div v-if="maps.length === 0" class="debug-info">
@@ -253,9 +267,10 @@
                 <p class="map-dimensions">{{ map.width || 0 }}×{{ map.height || 0 }}</p>
           </div>
           <div class="map-actions">
-                
-
-                
+                <button @click="exportMap(map)" class="action-btn export" title="Export Map" :disabled="exporting">
+                  <span v-if="exporting">⏳</span>
+                  <span v-else>📤</span>
+                </button>
                 <button @click="editMap(map)" class="action-btn edit" title="Edit Map">✏️</button>
                 <button @click="enterLayoutEditModeFor(map)" class="action-btn" title="Edit Layout">🗺️</button>
                 <button @click="showMapDeleteConfirmation(map)" class="action-btn delete" title="Delete Map">🗑️</button>
@@ -699,6 +714,14 @@
       @room-updated="handleRoomUpdated"
       @room-deleted="handleRoomDeleted"
     />
+
+    <!-- Import Map Modal -->
+    <ImportMapModal 
+      :show="showImportModal"
+      @close="closeImportModal"
+      @import="handleImportMap"
+      @show-toast="showToast"
+    />
   
   <!-- Delete Confirmation Modals - Moved outside panels for global access -->
   
@@ -775,6 +798,7 @@ import ToastNotification from '@/components/ToastNotification.vue'
 import PublishChangesModal from '@/components/PublishChangesModal.vue'
 import ActivityLogDrawer from '@/components/ActivityLogDrawer.vue'
 import RoomsManagementModal from '@/components/RoomsManagementModal.vue'
+import ImportMapModal from '@/components/ImportMapModal.vue'
 
 export default {
   name: 'MapEditorView',
@@ -782,7 +806,8 @@ export default {
     ToastNotification,
     PublishChangesModal,
     ActivityLogDrawer,
-    RoomsManagementModal
+    RoomsManagementModal,
+    ImportMapModal
   },
   data() {
     return {
@@ -849,7 +874,11 @@ export default {
       sidebarCollapsed: false, // New state for sidebar collapse
       activePanel: 'map-layout', // Active panel in unified right sidebar
       showPublishChangesModal: false, // Publish modal state
-      showRoomsManagementModal: false // Rooms management modal state
+      showRoomsManagementModal: false, // Rooms management modal state
+      // Export/Import functionality
+      showImportModal: false,
+      exporting: false,
+      importing: false
     }
   },
   async created() {
@@ -2550,6 +2579,79 @@ export default {
       this.fetchBuildings()
       // Update unpublished count for publish button
       this.fetchUnpublishedCount()
+    },
+
+    // Export/Import functionality
+    async exportMap(map) {
+      if (!map) {
+        this.$refs.toast.error('No Map Selected', 'Please select a map to export')
+        return
+      }
+
+      this.exporting = true
+      try {
+        const response = await axios.get(`/map-export/${map.id}`)
+        
+        if (response.data.success) {
+          // Create and download the file
+          const dataStr = JSON.stringify(response.data.data, null, 2)
+          const dataBlob = new Blob([dataStr], { type: 'application/json' })
+          const url = URL.createObjectURL(dataBlob)
+          
+          const link = document.createElement('a')
+          link.href = url
+          link.download = response.data.filename
+          document.body.appendChild(link)
+          link.click()
+          document.body.removeChild(link)
+          URL.revokeObjectURL(url)
+          
+          this.$refs.toast.success('Export Successful', `Map "${map.name}" has been exported successfully`)
+        } else {
+          throw new Error(response.data.message || 'Export failed')
+        }
+      } catch (error) {
+        console.error('Export error:', error)
+        this.$refs.toast.error('Export Failed', error.response?.data?.message || error.message || 'Failed to export map')
+      } finally {
+        this.exporting = false
+      }
+    },
+
+    openImportModal() {
+      this.showImportModal = true
+    },
+
+    closeImportModal() {
+      this.showImportModal = false
+    },
+
+    async handleImportMap(mapData) {
+      this.importing = true
+      try {
+        // Validate the file structure
+        if (!mapData.map || !mapData.map.name) {
+          throw new Error('Invalid map export file format')
+        }
+
+        const response = await axios.post('/map-export/import', {
+          map_data: mapData
+        })
+
+        if (response.data.success) {
+          this.$refs.toast.success('Import Successful', `Map "${mapData.map.name}" has been imported successfully`)
+          this.closeImportModal()
+          // Refresh the maps list
+          await this.fetchMaps()
+        } else {
+          throw new Error(response.data.message || 'Import failed')
+        }
+      } catch (error) {
+        console.error('Import error:', error)
+        this.$refs.toast.error('Import Failed', error.response?.data?.message || error.message || 'Failed to import map')
+      } finally {
+        this.importing = false
+      }
     }
 
   }
@@ -5684,5 +5786,93 @@ export default {
   background: #b91c1c;
   transform: translateY(-1px);
   box-shadow: 0 4px 8px rgba(220, 38, 38, 0.3);
+}
+
+/* Import Styles */
+.import-section {
+  margin: 20px 0;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.subsection-title {
+  margin: 0 0 15px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.import-actions {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 15px;
+}
+
+.import-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: linear-gradient(135deg, #007bff 0%, #6610f2 100%);
+  color: white;
+}
+
+.import-btn:hover {
+  background: linear-gradient(135deg, #0056b3 0%, #520dc2 100%);
+  transform: translateY(-1px);
+}
+
+.import-help {
+  margin: 0;
+  font-size: 13px;
+  color: #666;
+  line-height: 1.4;
+}
+
+/* Export button in map actions */
+.action-btn.export {
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-btn.export:hover:not(:disabled) {
+  background: linear-gradient(135deg, #218838 0%, #1ea085 100%);
+  transform: translateY(-1px);
+}
+
+.action-btn.export:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+
+/* Responsive adjustments for import */
+@media (max-width: 768px) {
+  .import-actions {
+    flex-direction: column;
+  }
+
+  .import-modal {
+    width: 95%;
+    margin: 10px;
+  }
 }
 </style> 
