@@ -277,7 +277,7 @@
           <div class="section-header">
             <h3 class="section-title">Building Management</h3>
             <div class="section-actions">
-              <button class="add-btn" @click="showAddBuildingModal = true">
+              <button class="add-btn" @click="openAddBuildingModal">
                 <span class="btn-icon">📁</span>
                 <span class="btn-text">Add Building</span>
               </button>
@@ -315,7 +315,7 @@
             <div v-if="buildings.length === 0" class="empty-state">
               <div class="empty-icon">🏢</div>
               <p class="empty-text">No buildings added yet</p>
-              <button class="add-btn primary" @click="showAddBuildingModal = true">Add First Building</button>
+              <button class="add-btn primary" @click="openAddBuildingModal">Add First Building</button>
             </div>
           </div>
         </div>
@@ -1033,6 +1033,8 @@ export default {
         if (!map || !map.id) return
         const { data } = await axios.get(`/map/${map.id}/layout`)
         this.activeMap = map
+        // Ensure buildingForm.map_id is set to the map being edited
+        this.buildingForm.map_id = map.id
         await this.fetchBuildings()
         this.editingLayoutSnapshot = data
         this.isEditingLayout = true
@@ -1048,6 +1050,8 @@ export default {
         const { data } = await axios.get(`/map/${this.activeMap.id}/layout`)
         this.editingLayoutSnapshot = data
         this.isEditingLayout = true
+        // Ensure buildingForm.map_id is set to the active map
+        this.buildingForm.map_id = this.activeMap.id
         await this.fetchBuildings()
         this.$refs.toast?.info('Layout Edit', 'Loaded layout snapshot for editing.')
       } catch (e) {
@@ -1157,6 +1161,8 @@ export default {
       
       // Open the add building modal if not already open
       if (!this.showAddBuildingModal && !this.editingBuilding) {
+        // Ensure buildingForm.map_id is set to the current active map
+        this.buildingForm.map_id = this.activeMap ? this.activeMap.id : null
         this.showAddBuildingModal = true
       } else if (this.selectedBuilding) {
         // Clear selection if a building was selected
@@ -1684,6 +1690,12 @@ export default {
       }
     },
     
+    openAddBuildingModal() {
+      // Ensure buildingForm.map_id is set to the current active map
+      this.buildingForm.map_id = this.activeMap ? this.activeMap.id : null
+      this.showAddBuildingModal = true
+    },
+
     closeBuildingModal() {
       this.showAddBuildingModal = false
       this.editingBuilding = null
@@ -1798,10 +1810,31 @@ export default {
       const file = event.target.files[0]
       if (!file) return
 
+      // Check file size (100MB = 100 * 1024 * 1024 bytes)
+      const maxSize = 100 * 1024 * 1024 // 100MB in bytes
+      if (file.size > maxSize) {
+        this.$refs.toast.error('File Too Large', `Image file is ${(file.size / (1024 * 1024)).toFixed(1)}MB. Maximum allowed size is 100MB.`)
+        // Clear the file input
+        event.target.value = ''
+        return
+      }
+
+      // Check file type
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
+      if (!allowedTypes.includes(file.type)) {
+        this.$refs.toast.error('Invalid File Type', 'Please select a valid image file (JPEG, PNG, GIF, or WebP).')
+        // Clear the file input
+        event.target.value = ''
+        return
+      }
+
       // Just set the local preview
       this.mapForm.image_path = URL.createObjectURL(file)
       // Store the file object for uploading
       this.mapForm.image = file
+      
+      // Show success message for valid file
+      this.$refs.toast.success('Image Selected', `Image loaded successfully (${(file.size / (1024 * 1024)).toFixed(1)}MB)`)
       
       // We'll upload the file when the form is submitted
     },
@@ -1852,7 +1885,30 @@ export default {
       } catch (error) {
         console.error('Error saving map:', error)
         console.error('Response data:', error.response?.data)
-        this.$refs.toast.error('Save Failed', 'Error saving map. Please try again.')
+        
+        // Handle specific validation errors
+        if (error.response?.status === 422) {
+          const responseData = error.response.data
+          if (responseData.message && responseData.message.includes('image field must not be greater than')) {
+            this.$refs.toast.error('File Too Large', 'The image file is too large. Please use an image smaller than 100MB.')
+          } else if (responseData.errors) {
+            // Handle other validation errors
+            const firstError = Object.values(responseData.errors)[0]
+            if (Array.isArray(firstError) && firstError.length > 0) {
+              this.$refs.toast.error('Validation Error', firstError[0])
+            } else {
+              this.$refs.toast.error('Validation Error', 'Please check your input and try again.')
+            }
+          } else {
+            this.$refs.toast.error('Validation Error', responseData.message || 'Please check your input and try again.')
+          }
+        } else if (error.response?.status === 413) {
+          this.$refs.toast.error('File Too Large', 'The image file is too large for the server to process.')
+        } else if (error.response?.status >= 500) {
+          this.$refs.toast.error('Server Error', 'A server error occurred. Please try again later.')
+        } else {
+          this.$refs.toast.error('Save Failed', 'Error saving map. Please try again.')
+        }
       }
     },
     
