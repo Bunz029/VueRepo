@@ -180,7 +180,7 @@ export default {
       const file = event.target.files[0]
       if (file && (file.type === 'application/zip' || file.name.endsWith('.zip'))) {
         this.selectedFile = file
-        this.previewFile(file)
+        this.previewFile()
       } else {
         this.$emit('show-toast', 'Invalid File', 'Please select a valid ZIP file', 'error')
       }
@@ -193,7 +193,7 @@ export default {
         const file = files[0]
         if (file.type === 'application/zip' || file.name.endsWith('.zip')) {
           this.selectedFile = file
-          this.previewFile(file)
+          this.previewFile()
         } else {
           this.$emit('show-toast', 'Invalid File', 'Please drop a valid ZIP file', 'error')
         }
@@ -208,7 +208,7 @@ export default {
       }
     },
 
-    async previewFile(file) {
+    async previewFile() {
       try {
         // For ZIP files, we'll show basic file info
         // The actual preview will be done on the server side
