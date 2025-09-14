@@ -396,9 +396,6 @@ u<template>
                   </div>
                   <div class="modern-employee-details">
                     <input v-model="employee.name" placeholder="Employee Name" class="modern-input employee-input">
-                    <input v-model="employee.position" placeholder="Position (e.g., Lecturer, Professor)" class="modern-input employee-input">
-                    <input v-model="employee.department" placeholder="Department (e.g., Physics, Mathematics)" class="modern-input employee-input">
-                    <input v-model="employee.email" placeholder="Email (optional)" class="modern-input employee-input">
                   </div>
                   <div class="modern-employee-actions">
                     <input type="file" @change="handleEmployeeImageUpload($event, index)" accept="image/*" class="hidden-file-input" :id="`employee-image-${index}`">
@@ -1446,9 +1443,6 @@ export default {
     addEmployee() {
       this.buildingForm.employees.push({
         name: '',
-        position: '',
-        department: '',
-        email: '',
         image: null,
         image_preview: null,
         existing_image: null
@@ -1607,9 +1601,6 @@ export default {
           // Add each employee's data
           validEmployees.forEach((employee, index) => {
             formData.append(`employees[${index}][name]`, employee.name.trim())
-            formData.append(`employees[${index}][position]`, employee.position || '')
-            formData.append(`employees[${index}][department]`, employee.department || '')
-            formData.append(`employees[${index}][email]`, employee.email || '')
             
             // Include employee ID if editing existing employee (for image preservation)
             if (employee.id) {
@@ -5214,7 +5205,7 @@ export default {
   border-bottom: 2px solid #e2e8f0;
 }
 
-.modern-employees-list {
+. {
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -5225,6 +5216,7 @@ export default {
   background: #f8fafc;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
+  height: 90px;
   padding: 16px;
 }
 
@@ -5270,7 +5262,7 @@ export default {
 
 .modern-employee-actions {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: 8px;
   flex-shrink: 0;
   position: relative;
