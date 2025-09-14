@@ -471,14 +471,33 @@ u<template>
           
           <div class="modern-form-group image-size-controls">
             <label class="modern-label">Image Size (pixels)</label>
-            <div class="size-inputs">
-              <div>
-                <label class="modern-label">Width</label>
-                <input type="number" v-model.number="buildingForm.image_width" min="10" max="700" step="1" class="modern-input">
-              </div>
-              <div>
-                <label class="modern-label">Height</label>
-                <input type="number" v-model.number="buildingForm.image_height" min="10" max="700" step="1" class="modern-input">
+            <div class="size-slider-container">
+              <div class="slider-wrapper">
+                <div class="slider-header">
+                  <label class="modern-label">Size: {{ buildingForm.image_width }}px</label>
+                  <input 
+                    type="number" 
+                    v-model.number="imageSizeSlider" 
+                    min="10" 
+                    max="700" 
+                    step="1" 
+                    class="size-input"
+                    @input="updateImageSizeFromSlider"
+                  >
+                </div>
+                <input 
+                  type="range" 
+                  v-model.number="imageSizeSlider" 
+                  min="10" 
+                  max="700" 
+                  step="1" 
+                  class="size-slider"
+                  @input="updateImageSizeFromSlider"
+                >
+                <div class="slider-labels">
+                  <span class="slider-label">10px</span>
+                  <span class="slider-label">700px</span>
+                </div>
               </div>
             </div>
             <div class="size-presets">
@@ -852,6 +871,7 @@ export default {
         image_height: 28,
         employees: []
       },
+      imageSizeSlider: 28, // Combined slider value for width and height
       newServiceInput: '',
       coordPreview: {
         visible: false,
@@ -2085,6 +2105,13 @@ export default {
     setImageSize(width, height) {
       this.buildingForm.image_width = width
       this.buildingForm.image_height = height
+      this.imageSizeSlider = width // Update slider to match the preset
+    },
+
+    updateImageSizeFromSlider() {
+      // Set both width and height to the same value from slider
+      this.buildingForm.image_width = this.imageSizeSlider
+      this.buildingForm.image_height = this.imageSizeSlider
     },
 
     handleKeyDown(event) {
@@ -3960,6 +3987,85 @@ export default {
 
 .size-inputs > div {
   flex: 1;
+}
+
+/* Slider Styles */
+.size-slider-container {
+  margin-bottom: 1rem;
+}
+
+.slider-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.slider-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.size-input {
+  width: 80px;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  text-align: center;
+  background: #fff;
+}
+
+.size-input:focus {
+  outline: none;
+  border-color: #4CAF50;
+  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+}
+
+.size-slider {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: #ddd;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+}
+
+.size-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #4CAF50;
+  cursor: pointer;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.size-slider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #4CAF50;
+  cursor: pointer;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.slider-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.25rem;
+}
+
+.slider-label {
+  font-size: 0.75rem;
+  color: #666;
+  font-weight: 500;
 }
 
 .size-inputs label {
