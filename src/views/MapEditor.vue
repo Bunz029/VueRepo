@@ -2590,25 +2590,30 @@ export default {
 
       this.exporting = true
       try {
-        const response = await axios.get(`/map-export/${map.id}`)
+        const response = await axios.get(`/map-export/${map.id}`, {
+          responseType: 'blob'
+        })
         
-        if (response.data.success) {
-          // Create and download the file
-          const dataStr = JSON.stringify(response.data.data, null, 2)
-          const dataBlob = new Blob([dataStr], { type: 'application/json' })
-          const url = URL.createObjectURL(dataBlob)
+        if (response.status === 200) {
+          // Create blob URL and trigger download
+          const blob = new Blob([response.data], { type: 'application/zip' })
+          const url = window.URL.createObjectURL(blob)
+          
+          // Generate filename from map name and current date
+          const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-')
+          const filename = `map_export_${map.name.replace(/[^a-zA-Z0-9_-]/g, '_')}_${timestamp}.zip`
           
           const link = document.createElement('a')
           link.href = url
-          link.download = response.data.filename
+          link.download = filename
           document.body.appendChild(link)
           link.click()
           document.body.removeChild(link)
-          URL.revokeObjectURL(url)
+          window.URL.revokeObjectURL(url)
           
           this.$refs.toast.success('Export Successful', `Map "${map.name}" has been exported successfully`)
         } else {
-          throw new Error(response.data.message || 'Export failed')
+          throw new Error('Export failed')
         }
       } catch (error) {
         console.error('Export error:', error)
@@ -2626,20 +2631,30 @@ export default {
       this.showImportModal = false
     },
 
-    async handleImportMap(mapData) {
+    async handleImportMap(file) {
       this.importing = true
       try {
-        // Validate the file structure
-        if (!mapData.map || !mapData.map.name) {
-          throw new Error('Invalid map export file format')
-        }
-
-        const response = await axios.post('/map-export/import', {
-          map_data: mapData
+        console.log('Starting import process', {
+          fileName: file.name,
+          fileSize: file.size,
+          fileType: file.type
         })
 
+        const formData = new FormData()
+        formData.append('map_file', file)
+
+        console.log('Sending import request to /map-export/import')
+        const response = await axios.post('/map-export/import', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          },
+          timeout: 300000 // 5 minutes timeout for large files
+        })
+
+        console.log('Import response received', response.data)
+
         if (response.data.success) {
-          this.$refs.toast.success('Import Successful', `Map "${mapData.map.name}" has been imported successfully`)
+          this.$refs.toast.success('Import Successful', `Map "${response.data.map?.name || 'Unknown'}" has been imported successfully`)
           this.closeImportModal()
           // Refresh the maps list
           await this.fetchMaps()
@@ -2648,7 +2663,21 @@ export default {
         }
       } catch (error) {
         console.error('Import error:', error)
-        this.$refs.toast.error('Import Failed', error.response?.data?.message || error.message || 'Failed to import map')
+        let errorMessage = 'Failed to import map'
+        
+        if (error.response?.data?.message) {
+          errorMessage = error.response.data.message
+        } else if (error.message) {
+          errorMessage = error.message
+        } else if (error.code === 'ECONNABORTED') {
+          errorMessage = 'Import timeout - file may be too large or server is busy'
+        } else if (error.response?.status === 413) {
+          errorMessage = 'File too large - please reduce file size and try again'
+        } else if (error.response?.status === 422) {
+          errorMessage = 'Invalid file format - please ensure you are uploading a valid ZIP file'
+        }
+        
+        this.$refs.toast.error('Import Failed', errorMessage)
       } finally {
         this.importing = false
       }
