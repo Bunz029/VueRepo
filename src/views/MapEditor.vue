@@ -1333,6 +1333,8 @@ export default {
         })) : []
       }
       
+      // Sync the slider with the building's current image size
+      this.imageSizeSlider = building.width || 28
       
       // Open the modal
       this.showAddBuildingModal = true
