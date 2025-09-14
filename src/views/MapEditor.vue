@@ -1,4 +1,4 @@
-<template>
+u<template>
   <div class="map-editor-container">
     
     
@@ -2658,6 +2658,8 @@ export default {
           this.closeImportModal()
           // Refresh the maps list
           await this.fetchMaps()
+          // Update unpublished count for publish button
+          this.fetchUnpublishedCount()
         } else {
           throw new Error(response.data.message || 'Import failed')
         }
