@@ -1248,7 +1248,7 @@ export default {
       if (imagePath.startsWith('http')) {
         return imagePath
       }
-      return `https://web-production-23886.up.railway.app/storage/${imagePath}`
+      return `https://web-production-4859.up.railway.app/storage/${imagePath}`
     },
     
     getPropertyChanges(building) {

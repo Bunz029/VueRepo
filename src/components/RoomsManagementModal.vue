@@ -346,12 +346,12 @@ export default {
 
     getThumbnailUrl(path) {
       if (!path) return null
-      return `https://web-production-23886.up.railway.app/storage/${path}`
+      return `https://web-production-4859.up.railway.app/storage/${path}`
     },
 
     getPanoramaUrl(path) {
       if (!path) return null
-      return `https://web-production-23886.up.railway.app/storage/${path}`
+      return `https://web-production-4859.up.railway.app/storage/${path}`
     }
   }
 }

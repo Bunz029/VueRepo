@@ -89,7 +89,7 @@ u<template>
           >
             <div class="map-wrapper" :style="getMapWrapperStyle()">
               <img 
-                :src="activeMap.image_path ? 'https://web-production-23886.up.railway.app/storage/' + activeMap.image_path : ''" 
+                :src="activeMap.image_path ? 'https://web-production-4859.up.railway.app/storage/' + activeMap.image_path : ''" 
                 :alt="activeMap.name"
                 class="map-image"
                 :style="{
@@ -248,7 +248,7 @@ u<template>
               <div class="map-image-container">
                 <img 
                   v-if="map.image_path"
-                  :src="'https://web-production-23886.up.railway.app/storage/' + map.image_path" 
+                  :src="'https://web-production-4859.up.railway.app/storage/' + map.image_path" 
                   :alt="map.name"
                   @error="handleImageError"
                   @load="handleImageLoad"
@@ -1127,7 +1127,7 @@ export default {
     getImageUrl(path) {
       if (!path) return ''
       if (path.startsWith('http')) return path
-      return 'https://web-production-23886.up.railway.app/storage/' + path
+      return 'https://web-production-4859.up.railway.app/storage/' + path
     },
     async fetchMaps() {
       try {
@@ -1313,9 +1313,9 @@ export default {
         y_coordinate: building.y_coordinate,
         map_id: building.map_id,
         image: null, // Will be set if user selects a new image
-        image_preview: building.image_path ? 'https://web-production-23886.up.railway.app/storage/' + building.image_path : null,
+        image_preview: building.image_path ? 'https://web-production-4859.up.railway.app/storage/' + building.image_path : null,
         modal_image: null, // Will be set if user selects a new modal image
-        modal_image_preview: building.modal_image_path ? 'https://web-production-23886.up.railway.app/storage/' + building.modal_image_path : null,
+        modal_image_preview: building.modal_image_path ? 'https://web-production-4859.up.railway.app/storage/' + building.modal_image_path : null,
         image_width: building.width || 28,
         image_height: building.height || 28,
         employees: building.employees ? building.employees.map(emp => ({
@@ -1325,7 +1325,7 @@ export default {
           department: emp.department || '',
           email: emp.email || '',
           image: null,
-          image_preview: emp.employee_image ? 'https://web-production-23886.up.railway.app/storage/' + emp.employee_image : null,
+          image_preview: emp.employee_image ? 'https://web-production-4859.up.railway.app/storage/' + emp.employee_image : null,
           existing_image: emp.employee_image // Store original image path for preservation
         })) : []
       }
@@ -1624,7 +1624,7 @@ export default {
           // For update, convert to raw XMLHttpRequest for maximum compatibility
           await new Promise((resolve, reject) => {
             const xhr = new XMLHttpRequest()
-            xhr.open('POST', `https://web-production-23886.up.railway.app/api/buildings/${this.editingBuilding.id}`)
+            xhr.open('POST', `https://web-production-4859.up.railway.app/api/buildings/${this.editingBuilding.id}`)
             xhr.withCredentials = true
             xhr.setRequestHeader('Accept', 'application/json')
             
@@ -1769,7 +1769,7 @@ export default {
       this.mapForm = { 
         ...map,
         // If the map has an image path, create the complete URL for display
-        image_path: map.image_path ? 'https://web-production-23886.up.railway.app/storage/' + map.image_path : null
+        image_path: map.image_path ? 'https://web-production-4859.up.railway.app/storage/' + map.image_path : null
       }
       this.showAddMapModal = true
     },
@@ -1978,7 +1978,7 @@ export default {
       // The image path is already in the correct format (images/buildings/...)
       // We just need to prefix it with the storage URL
       if (building.image_path) {
-        return 'https://web-production-23886.up.railway.app/storage/' + building.image_path
+        return 'https://web-production-4859.up.railway.app/storage/' + building.image_path
       }
       
       // Use a default placeholder image when no image is available
@@ -2037,13 +2037,13 @@ export default {
             const img = new Image()
             img.onload = () => {}
             img.onerror = () => console.error(`❌ Image for building ${apiBldg.id} FAILS to load`)
-            img.src = `https://web-production-23886.up.railway.app/storage/${apiBldg.image_path}`
+            img.src = `https://web-production-4859.up.railway.app/storage/${apiBldg.image_path}`
         }
         })
         
         // 5. Check Laravel public storage link
         try {
-          const testURL = 'https://web-production-23886.up.railway.app/storage/test-access.txt'
+          const testURL = 'https://web-production-4859.up.railway.app/storage/test-access.txt'
           await axios.head(testURL)
       } catch (error) {
           console.error('❌ Storage symlink test failed:', error.message)
