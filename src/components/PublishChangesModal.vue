@@ -649,7 +649,7 @@
                       <span class="item-name">{{ room.name }}</span>
                       <span class="item-badge new">NEW</span>
                     </div>
-                    <span class="item-details">{{ room.description || 'No description' }} • Building: {{ room.building?.building_name || 'Unknown' }}</span>
+                    <span class="item-details">Building: {{ room.building?.building_name || 'Unknown' }}</span>
                   </div>
                   <div class="item-actions">
                     <button 
