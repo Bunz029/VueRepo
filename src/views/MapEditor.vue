@@ -1,4 +1,4 @@
-<template>
+u<template>
   <div class="map-editor-container">
     
     
@@ -14,7 +14,12 @@
             <span class="info-label">Active Map:</span>
             <span class="info-value">{{ activeMap?.name || 'None' }}</span>
           </div>
-          <div class="header-actions"></div>
+          <div class="header-actions">
+            <button @click="$router.push('/trash')" class="header-btn trash-btn" title="Trash Bin">
+              <span class="btn-icon">🗑️</span>
+              <span class="btn-text">Trash</span>
+            </button>
+          </div>
         </div>
       </div>
     </header>
@@ -47,6 +52,18 @@
             <button @click="resetMapView" class="control-btn" title="Reset View">
               <span class="control-icon">🔄</span>
             </button>
+            <button @click="showPublishModal" class="control-btn push-btn" :disabled="isEditingLayout" :class="{ 'has-updates': unpublishedCount > 0, disabled: isEditingLayout }" title="Push Updates to App">
+              <span class="control-icon">📤</span>
+              <span v-if="unpublishedCount > 0" class="update-badge">{{ unpublishedCount }}</span>
+            </button>
+            <template v-if="isEditingLayout">
+              <button @click="saveLayout" class="control-btn save-btn" title="Save Map Layout">
+                <span class="control-icon">💾</span>
+              </button>
+              <button @click="stopEditingLayout" class="control-btn" title="Stop Editing Layout (Auto-Save)">
+                <span class="control-icon">✅</span>
+              </button>
+            </template>
             <button 
               v-if="buildingForm.x_coordinate || buildingForm.y_coordinate" 
               @click="clearPositionMarker" 
@@ -72,13 +89,13 @@
           >
             <div class="map-wrapper" :style="getMapWrapperStyle()">
               <img 
-                :src="activeMap.image_path ? 'http://localhost:8000/storage/' + activeMap.image_path : ''" 
+                :src="activeMap.image_url || (activeMap.image_path ? 'https://web-production-4859.up.railway.app/storage/' + activeMap.image_path : '')" 
                 :alt="activeMap.name"
                 class="map-image"
                 :style="{
                   width: activeMap.width + 'px',
                   height: activeMap.height + 'px',
-                  objectFit: 'none',
+                  objectFit: 'fill',
                   objectPosition: 'center'
                 }"
                 @load="onMapImageLoad"
@@ -95,7 +112,7 @@
                   left: `${building.x_coordinate}px`, 
                   top: `${building.y_coordinate}px`
                 }"
-                @click.stop="selectBuilding(building)"
+                @click.stop="handleBuildingClick($event, building)"
               >
                 <div class="marker-container">
                   <img 
@@ -125,7 +142,7 @@
                 :style="{ 
                   left: `${buildingForm.x_coordinate}px`, 
                   top: `${buildingForm.y_coordinate}px`,
-                  transform: `translate(-50%, -50%) scale(${Math.max(0.3, Math.min(1.2, 0.8 / this.mapScale))})`
+                  transform: `translate(-50%, -50%)`
                 }"
               >
                 <div class="marker-container">
@@ -206,6 +223,20 @@
         </button>
       </div>
 
+      <!-- Import Actions -->
+      <div class="import-section">
+        <h4 class="subsection-title">Import Map</h4>
+        <div class="import-actions">
+          <button class="import-btn" @click="openImportModal">
+            <span class="btn-icon">📥</span>
+            <span class="btn-text">Import Map</span>
+          </button>
+        </div>
+        <p class="import-help">
+          Import restores a previously exported map layout with all buildings, rooms, and images.
+        </p>
+      </div>
+
       <div class="maps-grid">
             <!-- Debug Info -->
             <div v-if="maps.length === 0" class="debug-info">
@@ -217,7 +248,7 @@
               <div class="map-image-container">
                 <img 
                   v-if="map.image_path"
-                  :src="'http://localhost:8000/storage/' + map.image_path" 
+                  :src="'https://web-production-4859.up.railway.app/storage/' + map.image_path" 
                   :alt="map.name"
                   @error="handleImageError"
                   @load="handleImageLoad"
@@ -236,11 +267,13 @@
                 <p class="map-dimensions">{{ map.width || 0 }}×{{ map.height || 0 }}</p>
           </div>
           <div class="map-actions">
-                
-
-                
+                <button @click="exportMap(map)" class="action-btn export" title="Export Map" :disabled="exporting">
+                  <span v-if="exporting">⏳</span>
+                  <span v-else>📤</span>
+                </button>
                 <button @click="editMap(map)" class="action-btn edit" title="Edit Map">✏️</button>
-                <button @click="deleteMap(map.id)" class="action-btn delete" title="Delete Map">🗑️</button>
+                <button @click="enterLayoutEditModeFor(map)" class="action-btn" title="Edit Layout">🗺️</button>
+                <button @click="showMapDeleteConfirmation(map)" class="action-btn delete" title="Delete Map">🗑️</button>
             <button 
               v-if="!map.is_active"
               @click="setActiveMap(map.id)"
@@ -259,7 +292,7 @@
           <div class="section-header">
             <h3 class="section-title">Building Management</h3>
             <div class="section-actions">
-              <button class="add-btn" @click="showAddBuildingModal = true">
+              <button class="add-btn" @click="openAddBuildingModal">
                 <span class="btn-icon">📁</span>
                 <span class="btn-text">Add Building</span>
               </button>
@@ -290,14 +323,14 @@
               </div>
               <div class="building-actions">
                 <button @click="editBuilding(building)" class="action-btn edit" title="Edit Building">🔧</button>
-                <button @click="deleteBuilding(building.id)" class="action-btn delete" title="Delete Building">🗑️</button>
+                <button @click="showDeleteConfirmation(building)" class="action-btn delete" title="Delete Building">🗑️</button>
               </div>
             </div>
             
             <div v-if="buildings.length === 0" class="empty-state">
               <div class="empty-icon">🏢</div>
               <p class="empty-text">No buildings added yet</p>
-              <button class="add-btn primary" @click="showAddBuildingModal = true">Add First Building</button>
+              <button class="add-btn primary" @click="openAddBuildingModal">Add First Building</button>
             </div>
           </div>
         </div>
@@ -363,9 +396,6 @@
                   </div>
                   <div class="modern-employee-details">
                     <input v-model="employee.name" placeholder="Employee Name" class="modern-input employee-input">
-                    <input v-model="employee.position" placeholder="Position (e.g., Lecturer, Professor)" class="modern-input employee-input">
-                    <input v-model="employee.department" placeholder="Department (e.g., Physics, Mathematics)" class="modern-input employee-input">
-                    <input v-model="employee.email" placeholder="Email (optional)" class="modern-input employee-input">
                   </div>
                   <div class="modern-employee-actions">
                     <input type="file" @change="handleEmployeeImageUpload($event, index)" accept="image/*" class="hidden-file-input" :id="`employee-image-${index}`">
@@ -381,6 +411,7 @@
           <div class="modern-form-group map-instructions">
             <h3 class="section-subtitle">Position on Map</h3>
             <p class="instruction-text">Click directly on the map to set coordinates, or enter them manually below.</p>
+            <p class="instruction-text small">💡 Building markers use smart click detection - only the visible parts of images are clickable.</p>
           </div>
           
           <div class="modern-form-group coordinate-inputs">
@@ -391,6 +422,9 @@
             <div>
               <label class="modern-label">Y Coordinate</label>
               <input type="number" v-model="buildingForm.y_coordinate" required class="modern-input">
+            </div>
+            <div class="coordinate-hint">
+              <small class="hint-text">💡 Use arrow keys to fine-tune position (Shift + arrow for 10px steps)</small>
             </div>
           </div>
           
@@ -417,17 +451,50 @@
               class="modern-file-input"
             >
           </div>
+
+          <!-- Rooms Management Section -->
+          <div class="modern-form-group">
+            <label class="modern-label">360° Room Images</label>
+            <p class="field-description">Manage 360° panoramic images for rooms in this building</p>
+            <button 
+              type="button" 
+              @click="openRoomsManagement" 
+              class="modern-btn-rooms-inline"
+            >
+              <span class="btn-icon">🏠</span>
+              <span class="btn-text">Manage Rooms (360°)</span>
+            </button>
+          </div>
           
           <div class="modern-form-group image-size-controls">
             <label class="modern-label">Image Size (pixels)</label>
-            <div class="size-inputs">
-              <div>
-                <label class="modern-label">Width</label>
-                <input type="number" v-model.number="buildingForm.image_width" min="10" max="700" step="1" class="modern-input">
-              </div>
-              <div>
-                <label class="modern-label">Height</label>
-                <input type="number" v-model.number="buildingForm.image_height" min="10" max="700" step="1" class="modern-input">
+            <div class="size-slider-container">
+              <div class="slider-wrapper">
+                <div class="slider-header">
+                  <label class="modern-label">Size: {{ buildingForm.image_width }}px</label>
+                  <input 
+                    type="number" 
+                    v-model.number="imageSizeSlider" 
+                    min="10" 
+                    max="700" 
+                    step="1" 
+                    class="size-input"
+                    @input="updateImageSizeFromSlider"
+                  >
+                </div>
+                <input 
+                  type="range" 
+                  v-model.number="imageSizeSlider" 
+                  min="10" 
+                  max="700" 
+                  step="1" 
+                  class="size-slider"
+                  @input="updateImageSizeFromSlider"
+                >
+                <div class="slider-labels">
+                  <span class="slider-label">10px</span>
+                  <span class="slider-label">700px</span>
+                </div>
               </div>
             </div>
             <div class="size-presets">
@@ -457,7 +524,7 @@
           <div class="modern-form-actions">
             <button type="submit" class="modern-btn-save">Save</button>
             <button type="button" @click="closeBuildingModal" class="modern-btn-cancel">Cancel</button>
-            </div>
+          </div>
           </form>
         </div>
       </div>
@@ -475,25 +542,6 @@
               <input v-model="mapForm.name" required class="modern-input" placeholder="Enter map name">
   </div>
             
-            <div class="modern-form-group">
-              <label class="modern-label">Width (pixels)</label>
-              <input type="number" v-model="mapForm.width" required min="100" max="10000" class="modern-input" value="1260">
-              <small class="helper-text">Standard width: 1260px | Test: 5500px</small>
-            </div>
-            
-            <div class="modern-form-group">
-              <label class="modern-label">Height (pixels)</label>
-              <input type="number" v-model="mapForm.height" required min="100" max="10000" class="modern-input" value="599">
-              <small class="helper-text">Standard height: 599px | Test: 3450px</small>
-            </div>
-            
-            <div class="modern-form-group">
-              <label class="modern-label">Quick Presets</label>
-              <div class="preset-buttons">
-                <button type="button" @click="setMapDimensions(1260, 599)" class="modern-preset-btn">Standard (1260×599)</button>
-                <button type="button" @click="setMapDimensions(5500, 3450)" class="modern-preset-btn">High-Res Test (5500×3450)</button>
-              </div>
-            </div>
             
             <div class="modern-form-group">
               <label class="modern-label">Map Image</label>
@@ -653,104 +701,108 @@
         </div>
       </div>
 
-      <!-- Simple Delete Confirmation Modal -->
-      <div v-if="showDeleteModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 10000; display: flex; align-items: center; justify-content: center;">
-        <div style="background: white; border-radius: 12px; padding: 24px; max-width: 400px; width: 90%; box-shadow: 0 20px 25px rgba(0, 0, 0, 0.15);">
-          <div style="text-align: center; margin-bottom: 20px;">
-            <div style="font-size: 48px; margin-bottom: 16px;">⚠️</div>
-            <h3 style="margin: 0; font-size: 18px; color: #1f2937;">Delete Building</h3>
-          </div>
-          
-          <p style="color: #6b7280; text-align: center; margin-bottom: 24px; line-height: 1.5;">
-            Are you sure you want to delete building <strong>{{ buildingToDelete ? buildingToDelete.building_name : 'Unknown' }}</strong>? This action cannot be undone.
-          </p>
-          
-          <div style="display: flex; gap: 12px;">
-            <button @click="showDeleteModal = false" style="flex: 1; padding: 12px 20px; background: #6b7280; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">
-              Cancel
-            </button>
-            <button @click="confirmDeleteBuilding" style="flex: 1; padding: 12px 20px; background: #dc3545; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">
-              Delete
-            </button>
-          </div>
-        </div>
-      </div>
 
-      <!-- Simple Map Delete Confirmation Modal -->
-      <div v-if="showMapDeleteModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 10000; display: flex; align-items: center; justify-content: center;">
-        <div style="background: white; border-radius: 12px; padding: 24px; max-width: 400px; width: 90%; box-shadow: 0 20px 25px rgba(0, 0, 0, 0.15);">
-          <div style="text-align: center; margin-bottom: 20px;">
-            <div style="font-size: 48px; margin-bottom: 16px;">⚠️</div>
-            <h3 style="margin: 0; font-size: 18px; color: #1f2937;">Delete Map</h3>
-          </div>
-          
-          <p style="color: #6b7280; text-align: center; margin-bottom: 24px; line-height: 1.5;">
-            Are you sure you want to delete map <strong>{{ mapToDelete ? mapToDelete.name : 'Unknown' }}</strong>? This action cannot be undone and will also remove all buildings associated with it.
-          </p>
-          
-          <div style="display: flex; gap: 12px;">
-            <button @click="showMapDeleteModal = false" style="flex: 1; padding: 12px 20px; background: #6b7280; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">
-              Cancel
-            </button>
-            <button @click="confirmMapDelete" style="flex: 1; padding: 12px 20px; background: #dc3545; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">
-              Delete
-            </button>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 
-  <!-- Toast Notifications -->
-  <ToastNotification ref="toast" />
+    <!-- Toast Notifications -->
+    <ToastNotification ref="toast" />
+    
+    <!-- Publish Changes Modal -->
+    <PublishChangesModal 
+      :show="showPublishChangesModal" 
+      @cancel="handlePublishCancel"
+      @success="handlePublishSuccess"
+      @error="handlePublishError"
+      @change-processed="handleChangeProcessed"
+      @show-toast="showToast"
+    />
+
+    <!-- Activity Log Drawer -->
+    <ActivityLogDrawer @show-toast="showToast" />
+
+    <!-- Rooms Management Modal -->
+    <RoomsManagementModal 
+      :show="showRoomsManagementModal"
+      :building="editingBuilding"
+      @close="closeRoomsManagement"
+      @room-added="handleRoomAdded"
+      @room-updated="handleRoomUpdated"
+      @room-deleted="handleRoomDeleted"
+    />
+
+    <!-- Import Map Modal -->
+    <ImportMapModal 
+      :show="showImportModal"
+      @close="closeImportModal"
+      @import="handleImportMap"
+      @show-toast="showToast"
+    />
   
   <!-- Delete Confirmation Modals - Moved outside panels for global access -->
   
   <!-- Building Delete Confirmation Modal -->
-  <div v-if="showDeleteModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 10000; display: flex; align-items: center; justify-content: center;">
-    <div style="background: white; border-radius: 12px; padding: 24px; max-width: 400px; width: 90%; box-shadow: 0 20px 25px rgba(0, 0, 0, 0.15);">
-      <div style="text-align: center; margin-bottom: 20px;">
-        <div style="font-size: 48px; margin-bottom: 16px;">⚠️</div>
-        <h3 style="margin: 0; font-size: 18px; color: #1f2937;">Delete Building</h3>
+  <div v-if="showDeleteModal" class="delete-modal-overlay">
+    <div class="delete-modal-content">
+      <!-- Close button -->
+      <button @click="showDeleteModal = false; stopBuildingCountdown(); buildingDeleteCountdown = 3" class="delete-modal-close">&times;</button>
+      
+      <div class="delete-modal-header">
+        <div class="delete-modal-icon">⚠️</div>
+        <h3 class="delete-modal-title">Delete Building</h3>
       </div>
       
-      <p style="color: #6b7280; text-align: center; margin-bottom: 24px; line-height: 1.5;">
+      <p class="delete-modal-message">
         Are you sure you want to delete building <strong>{{ buildingToDelete ? buildingToDelete.building_name : 'Unknown' }}</strong>? This action cannot be undone.
       </p>
       
-      <div style="display: flex; gap: 12px;">
-        <button @click="showDeleteModal = false" style="flex: 1; padding: 12px 20px; background: #6b7280; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">
-          Cancel
-        </button>
-        <button @click="confirmDeleteBuilding" style="flex: 1; padding: 12px 20px; background: #dc3545; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">
-          Delete
-        </button>
+      <div class="delete-modal-actions">
+        <div v-if="buildingDeleteCountdown > 0" class="countdown-display">
+          {{ buildingDeleteCountdown }}
+        </div>
+        <div v-else class="delete-modal-buttons">
+          <button @click="showDeleteModal = false; stopBuildingCountdown(); buildingDeleteCountdown = 3" class="delete-modal-cancel">
+            Cancel
+          </button>
+          <button @click="confirmDeleteBuilding" class="delete-modal-confirm">
+            Delete
+          </button>
+        </div>
       </div>
     </div>
   </div>
 
   <!-- Map Delete Confirmation Modal -->
-  <div v-if="showMapDeleteModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 10000; display: flex; align-items: center; justify-content: center;">
-    <div style="background: white; border-radius: 12px; padding: 24px; max-width: 400px; width: 90%; box-shadow: 0 20px 25px rgba(0, 0, 0, 0.15);">
-      <div style="text-align: center; margin-bottom: 20px;">
-        <div style="font-size: 48px; margin-bottom: 16px;">⚠️</div>
-        <h3 style="margin: 0; font-size: 18px; color: #1f2937;">Delete Map</h3>
+  <div v-if="showMapDeleteModal" class="delete-modal-overlay" @click="closeMapDeleteModal">
+    <div class="delete-modal-content" @click.stop>
+      <!-- Close button -->
+      <button @click="closeMapDeleteModal" class="delete-modal-close">&times;</button>
+      
+      <div class="delete-modal-header">
+        <div class="delete-modal-icon">⚠️</div>
+        <h3 class="delete-modal-title">Mark Map for Deletion</h3>
       </div>
       
-      <p style="color: #6b7280; text-align: center; margin-bottom: 24px; line-height: 1.5;">
-        Are you sure you want to delete map <strong>{{ mapToDelete ? mapToDelete.name : 'Unknown' }}</strong>? This action cannot be undone and will also remove all buildings associated with it.
+      <p class="delete-modal-message">
+        Are you sure you want to mark map <strong>{{ mapToDelete ? mapToDelete.name : 'Unknown' }}</strong> for deletion? This will mark it for deletion and it will be removed when you publish changes. All buildings associated with it will also be affected.
       </p>
       
-      <div style="display: flex; gap: 12px;">
-        <button @click="showMapDeleteModal = false" style="flex: 1; padding: 12px 20px; background: #6b7280; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">
-          Cancel
-        </button>
-        <button @click="confirmMapDelete" style="flex: 1; padding: 12px 20px; background: #dc3545; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">
-          Delete
-        </button>
+      <div class="delete-modal-actions">
+        <div v-if="mapDeleteCountdown > 0" class="countdown-display">
+          {{ mapDeleteCountdown }}
+        </div>
+        <div v-else class="delete-modal-buttons">
+          <button @click="closeMapDeleteModal" class="delete-modal-cancel">
+            Cancel
+          </button>
+          <button @click="confirmMapDelete" class="delete-modal-confirm">
+            Delete
+          </button>
+        </div>
       </div>
     </div>
   </div>
+
   
 
 </template>
@@ -759,11 +811,19 @@
 <script>
 import axios from 'axios'
 import ToastNotification from '@/components/ToastNotification.vue'
+import PublishChangesModal from '@/components/PublishChangesModal.vue'
+import ActivityLogDrawer from '@/components/ActivityLogDrawer.vue'
+import RoomsManagementModal from '@/components/RoomsManagementModal.vue'
+import ImportMapModal from '@/components/ImportMapModal.vue'
 
 export default {
   name: 'MapEditorView',
   components: {
-    ToastNotification
+    ToastNotification,
+    PublishChangesModal,
+    ActivityLogDrawer,
+    RoomsManagementModal,
+    ImportMapModal
   },
   data() {
     return {
@@ -777,12 +837,19 @@ export default {
       editingBuilding: null,
       showDeleteModal: false,
       buildingToDelete: null,
+      buildingDeleteCountdown: 3,
+      buildingCountdownInterval: null,
       showMapDeleteModal: false,
       mapToDelete: null,
+      mapDeleteCountdown: 3,
+      mapCountdownInterval: null,
+      unpublishedCount: 0,
+      isEditingLayout: false,
+      editingLayoutSnapshot: null,
       mapForm: {
         name: '',
-        width: '1260',
-        height: '599',
+        width: '6100',
+        height: '3000',
         image: null,
         image_path: null
       },
@@ -801,6 +868,7 @@ export default {
         image_height: 28,
         employees: []
       },
+      imageSizeSlider: 28, // Combined slider value for width and height
       newServiceInput: '',
       coordPreview: {
         visible: false,
@@ -821,20 +889,33 @@ export default {
       dragMode: false,
       zoomMode: false,
       sidebarCollapsed: false, // New state for sidebar collapse
-      activePanel: 'map-layout' // Active panel in unified right sidebar
+      activePanel: 'map-layout', // Active panel in unified right sidebar
+      showPublishChangesModal: false, // Publish modal state
+      showRoomsManagementModal: false, // Rooms management modal state
+      // Export/Import functionality
+      showImportModal: false,
+      exporting: false,
+      importing: false
     }
   },
   async created() {
     await Promise.all([
       this.fetchMaps(),
-      this.fetchBuildings()
+      this.fetchBuildings(),
+      this.fetchUnpublishedCount()
     ])
   },
   mounted() {
     window.addEventListener('click', this.handleOutsideClick)
+    // Add keyboard event listeners for arrow key controls
+    document.addEventListener('keydown', this.handleKeyDown)
   },
   beforeUnmount() {
     window.removeEventListener('click', this.handleOutsideClick)
+    // Remove keyboard event listeners
+    document.removeEventListener('keydown', this.handleKeyDown)
+    this.stopMapCountdown()
+    this.stopBuildingCountdown()
   },
   watch: {
     showAddBuildingModal(newVal) {
@@ -889,35 +970,179 @@ export default {
   },
 
   methods: {
+    // Helper function to check if a pixel is transparent
+    async isPixelTransparent(imageSrc, x, y, imageWidth, imageHeight) {
+      return new Promise((resolve) => {
+        const img = new Image()
+        
+        // Try with CORS first, fallback without if it fails
+        img.crossOrigin = 'anonymous'
+        
+        img.onload = () => {
+          try {
+            const canvas = document.createElement('canvas')
+            const ctx = canvas.getContext('2d')
+            canvas.width = imageWidth
+            canvas.height = imageHeight
+            
+            // Draw the image to canvas
+            ctx.drawImage(img, 0, 0, imageWidth, imageHeight)
+            
+            // Get pixel data at the clicked position
+            const pixelData = ctx.getImageData(x, y, 1, 1).data
+            const alpha = pixelData[3] // Alpha channel (0-255)
+            
+            // Consider pixel transparent if alpha is less than 128 (50% opacity)
+            resolve(alpha < 128)
+          } catch (error) {
+            console.warn('Canvas pixel detection failed, defaulting to non-transparent:', error)
+            resolve(false) // Default to non-transparent on canvas error
+          }
+        }
+        
+        img.onerror = () => {
+          // If CORS fails, try without CORS
+          if (img.crossOrigin === 'anonymous') {
+            img.crossOrigin = null
+            img.src = imageSrc
+            return
+          }
+          console.warn('Image loading failed for pixel detection, defaulting to non-transparent')
+          resolve(false) // Default to non-transparent on error
+        }
+        
+        img.src = imageSrc
+      })
+    },
+
+    // Enhanced click handler for building markers with transparent pixel detection
+    async handleBuildingClick(event, building) {
+      if (!building.image_path) {
+        // If no image, use the original click behavior
+        this.selectBuilding(building)
+        return
+      }
+
+      const img = event.target
+      
+      // Ensure we have valid image dimensions
+      if (!img.naturalWidth || !img.naturalHeight) {
+        console.warn('Image not fully loaded, defaulting to non-transparent')
+        this.selectBuilding(building)
+        return
+      }
+      
+      const rect = img.getBoundingClientRect()
+      
+      // Calculate click position relative to the image
+      const clickX = event.clientX - rect.left
+      const clickY = event.clientY - rect.top
+      
+      // Ensure click is within image bounds
+      if (clickX < 0 || clickY < 0 || clickX >= rect.width || clickY >= rect.height) {
+        return // Click outside image bounds
+      }
+      
+      // Scale click coordinates to match the actual image dimensions
+      const scaleX = img.naturalWidth / rect.width
+      const scaleY = img.naturalHeight / rect.height
+      const imageX = Math.floor(clickX * scaleX)
+      const imageY = Math.floor(clickY * scaleY)
+      
+      // Ensure coordinates are within image bounds
+      if (imageX < 0 || imageY < 0 || imageX >= img.naturalWidth || imageY >= img.naturalHeight) {
+        return // Coordinates outside image bounds
+      }
+      
+      try {
+        // Check if the clicked pixel is transparent
+        const isTransparent = await this.isPixelTransparent(
+          img.src, 
+          imageX, 
+          imageY, 
+          img.naturalWidth, 
+          img.naturalHeight
+        )
+        
+        // Only trigger building selection if clicked on non-transparent pixel
+        if (!isTransparent) {
+          this.selectBuilding(building)
+        }
+      } catch (error) {
+        console.warn('Pixel detection failed, defaulting to non-transparent:', error)
+        this.selectBuilding(building)
+      }
+    },
+
+    async enterLayoutEditModeFor(map) {
+      try {
+        if (!map || !map.id) return
+        const { data } = await axios.get(`/map/${map.id}/layout`)
+        this.activeMap = map
+        // Ensure buildingForm.map_id is set to the map being edited
+        this.buildingForm.map_id = map.id
+        await this.fetchBuildings()
+        this.editingLayoutSnapshot = data
+        this.isEditingLayout = true
+        this.$refs.toast?.info('Layout Edit', `Loaded layout snapshot for ${map.name}.`)
+      } catch (e) {
+        console.error('Failed to load layout snapshot', e)
+        this.$refs.toast?.error('Load Failed', 'Could not load layout snapshot.')
+      }
+    },
+    async enterLayoutEditMode() {
+      try {
+        if (!this.activeMap || !this.activeMap.id) return
+        const { data } = await axios.get(`/map/${this.activeMap.id}/layout`)
+        this.editingLayoutSnapshot = data
+        this.isEditingLayout = true
+        // Ensure buildingForm.map_id is set to the active map
+        this.buildingForm.map_id = this.activeMap.id
+        await this.fetchBuildings()
+        this.$refs.toast?.info('Layout Edit', 'Loaded layout snapshot for editing.')
+      } catch (e) {
+        console.error('Failed to load layout snapshot', e)
+        this.$refs.toast?.error('Load Failed', 'Could not load layout snapshot.')
+      }
+    },
+    async saveLayout() {
+      try {
+        if (!this.activeMap || !this.activeMap.id) return
+        const { data } = await axios.post(`/map/${this.activeMap.id}/save-layout`)
+        this.$refs.toast?.success('Layout Saved', 'Map layout snapshot saved.')
+        // Stay in edit mode; just refresh local snapshot reference
+        this.editingLayoutSnapshot = data.snapshot
+      } catch (e) {
+        console.error('Failed to save layout snapshot', e)
+        this.$refs.toast?.error('Save Failed', 'Could not save layout snapshot.')
+      }
+    },
+    async stopEditingLayout() {
+      // Auto-save then exit edit mode and restore active map view
+      await this.saveLayout()
+      // Reload maps to ensure active map is correctly set
+      await this.fetchMaps()
+      this.isEditingLayout = false
+    },
     getImageUrl(path) {
       if (!path) return ''
       if (path.startsWith('http')) return path
-      return 'http://localhost:8000/storage/' + path
+      return 'https://web-production-4859.up.railway.app/storage/' + path
     },
     async fetchMaps() {
       try {
-        console.log('Fetching maps from:', axios.defaults.baseURL + '/api/map')
-        const response = await axios.get('/api/map')
-        console.log('Maps response:', response.data)
-        this.maps = response.data || []
-        
-        // Log each map for debugging
-        this.maps.forEach((map, index) => {
-          console.log(`Map ${index + 1}:`, {
-            id: map.id,
-            name: map.name,
-            image_path: map.image_path,
-            width: map.width,
-            height: map.height,
-            is_active: map.is_active
-          })
-        })
+        const response = await axios.get('/map')
+        // Show published maps and restored maps (not pending deletion)
+        // Exclude only truly new unpublished maps that have never been published
+        this.maps = (response.data || []).filter(map => 
+          map.is_published || (map.published_data && !map.pending_deletion)
+        )
         
         // Find and set active map
         const activeMap = this.maps.find(map => map.is_active)
         if (activeMap) {
           this.activeMap = activeMap
-          console.log('Active map set:', activeMap.name)
+          await this.fetchBuildings()
         }
       } catch (error) {
         console.error('Error fetching maps:', error)
@@ -927,29 +1152,11 @@ export default {
     
     async fetchBuildings() {
       try {
-        console.log('Fetching buildings from API...')
-        const response = await axios.get('/api/buildings')
-        console.log('API response received:', response.status)
+        const params = {}
+        if (this.activeMap?.id) params.map_id = this.activeMap.id
+        const response = await axios.get('/buildings', { params })
         
         this.buildings = response.data || []
-        console.log(`Fetched ${this.buildings.length} buildings:`, this.buildings)
-        
-        // Log image paths for debugging
-        if (this.buildings.length > 0) {
-          console.log('🔍 Examining buildings data:')
-          this.buildings.forEach(building => {
-            console.log(`Building ID ${building.id}: ${building.building_name}`)
-            console.log(`  ↳ image_path: "${building.image_path}"`)
-            console.log(`  ↳ Full image URL would be: http://localhost:8000/storage/${building.image_path || ''}`)
-            // Log all fields for debugging
-            console.log(`  ↳ All fields:`, Object.keys(building).reduce((obj, key) => {
-              obj[key] = building[key]
-              return obj
-            }, {}))
-          })
-        } else {
-          console.log('⚠️ No buildings found in response')
-        }
       } catch (error) {
         console.error('❌ Error fetching buildings:', error)
         if (error.response) {
@@ -983,9 +1190,11 @@ export default {
       const mouseX = event.clientX - rect.left
       const mouseY = event.clientY - rect.top
       
-      // Calculate map coordinates (accounting for scroll and scale)
+      // Calculate map coordinates accounting for scaling
       const rawX = mouseX + mapCanvas.scrollLeft
       const rawY = mouseY + mapCanvas.scrollTop
+      
+      // Scale coordinates back to original map dimensions
       const x = Math.round(rawX / this.mapScale)
       const y = Math.round(rawY / this.mapScale)
       
@@ -994,13 +1203,14 @@ export default {
       this.buildingForm.y_coordinate = y
       this.newBuildingPosition = { x, y }
       
-      console.log(`🎯 Set coordinates: (${x}, ${y}) - Raw: (${rawX}, ${rawY}) - Scale: ${this.mapScale}`)
       
       // If building creator is open, just update position
       
       
       // Open the add building modal if not already open
       if (!this.showAddBuildingModal && !this.editingBuilding) {
+        // Ensure buildingForm.map_id is set to the current active map
+        this.buildingForm.map_id = this.activeMap ? this.activeMap.id : null
         this.showAddBuildingModal = true
       } else if (this.selectedBuilding) {
         // Clear selection if a building was selected
@@ -1028,9 +1238,11 @@ export default {
       const mouseX = event.clientX - rect.left
       const mouseY = event.clientY - rect.top
       
-      // Calculate map coordinates (accounting for scroll and scale)
+      // Calculate map coordinates accounting for scaling
       const rawX = mouseX + mapCanvas.scrollLeft
       const rawY = mouseY + mapCanvas.scrollTop
+      
+      // Scale coordinates back to original map dimensions
       const x = Math.round(rawX / this.mapScale)
       const y = Math.round(rawY / this.mapScale)
       
@@ -1058,8 +1270,6 @@ export default {
     
     selectBuilding(building) {
       this.selectedBuilding = building === this.selectedBuilding ? null : building
-      console.log('Selected building:', building)
-      console.log('selectedBuilding is now:', this.selectedBuilding)
       
       // If we're in edit mode, update the form with the selected building's data
       if (this.editingBuilding && this.selectedBuilding && this.selectedBuilding.id === this.editingBuilding.id) {
@@ -1094,7 +1304,6 @@ export default {
     },
     
     editBuilding(building) {
-      console.log('Starting to edit building:', building)
       
       // Store the original building for reference
       this.editingBuilding = building
@@ -1108,9 +1317,9 @@ export default {
         y_coordinate: building.y_coordinate,
         map_id: building.map_id,
         image: null, // Will be set if user selects a new image
-        image_preview: building.image_path ? 'http://localhost:8000/storage/' + building.image_path : null,
+        image_preview: building.image_path ? 'https://web-production-4859.up.railway.app/storage/' + building.image_path : null,
         modal_image: null, // Will be set if user selects a new modal image
-        modal_image_preview: building.modal_image_path ? 'http://localhost:8000/storage/' + building.modal_image_path : null,
+        modal_image_preview: building.modal_image_path ? 'https://web-production-4859.up.railway.app/storage/' + building.modal_image_path : null,
         image_width: building.width || 28,
         image_height: building.height || 28,
         employees: building.employees ? building.employees.map(emp => ({
@@ -1120,12 +1329,13 @@ export default {
           department: emp.department || '',
           email: emp.email || '',
           image: null,
-          image_preview: emp.employee_image ? 'http://localhost:8000/storage/' + emp.employee_image : null,
+          image_preview: emp.employee_image ? 'https://web-production-4859.up.railway.app/storage/' + emp.employee_image : null,
           existing_image: emp.employee_image // Store original image path for preservation
         })) : []
       }
       
-      console.log('Form data prepared:', this.buildingForm)
+      // Sync the slider with the building's current image size
+      this.imageSizeSlider = building.width || 28
       
       // Open the modal
       this.showAddBuildingModal = true
@@ -1142,25 +1352,44 @@ export default {
     showDeleteConfirmation(building) {
       this.buildingToDelete = building
       this.showDeleteModal = true
+      this.startBuildingCountdown()
+    },
+
+    startBuildingCountdown() {
+      this.buildingDeleteCountdown = 3
+      this.buildingCountdownInterval = setInterval(() => {
+        this.buildingDeleteCountdown--
+        if (this.buildingDeleteCountdown <= 0) {
+          this.stopBuildingCountdown()
+        }
+      }, 1000)
+    },
+
+    stopBuildingCountdown() {
+      if (this.buildingCountdownInterval) {
+        clearInterval(this.buildingCountdownInterval)
+        this.buildingCountdownInterval = null
+      }
     },
 
     async confirmDeleteBuilding() {
       if (!this.buildingToDelete) return
       
+      this.stopBuildingCountdown()
+      
       try {
-        console.log('Deleting building with ID:', this.buildingToDelete.id)
-        const response = await axios.delete(`/api/buildings/${this.buildingToDelete.id}`)
-        console.log('Delete response:', response)
+        await axios.delete(`/buildings/${this.buildingToDelete.id}`)
         
         // Clear selection if this was the selected building
         if (this.selectedBuilding && this.selectedBuilding.id === this.buildingToDelete.id) {
           this.selectedBuilding = null
-          console.log('Cleared selected building')
         }
         
         // Refresh the buildings list from server instead of just filtering locally
         await this.fetchBuildings()
-        console.log('Refreshed buildings list after delete')
+        
+        // Update unpublished count after building deletion
+        this.fetchUnpublishedCount()
         
         // Show success toast notification
         this.$refs.toast.success('Building Deleted', 'Building has been successfully removed from the system.')
@@ -1168,6 +1397,7 @@ export default {
         // Close the confirmation modal
         this.showDeleteModal = false
         this.buildingToDelete = null
+        this.buildingDeleteCountdown = 3
       } catch (error) {
         console.error('Error deleting building:', error.response?.data || error.message || error)
         
@@ -1177,6 +1407,7 @@ export default {
         // Close the confirmation modal
         this.showDeleteModal = false
         this.buildingToDelete = null
+        this.buildingDeleteCountdown = 3
       }
     },
 
@@ -1196,7 +1427,6 @@ export default {
       const file = event.target.files[0]
       if (!file) return
       
-      console.log('Building image selected:', file.name, 'Size:', file.size, 'Type:', file.type)
       
       // Just set the local reference for later upload and preview
       this.buildingForm.image = file
@@ -1207,7 +1437,6 @@ export default {
       const file = event.target.files[0]
       if (!file) return
       
-      console.log('Modal image selected:', file.name, 'Size:', file.size, 'Type:', file.type)
       
       // Just set the local reference for later upload and preview
       this.buildingForm.modal_image = file
@@ -1218,9 +1447,6 @@ export default {
     addEmployee() {
       this.buildingForm.employees.push({
         name: '',
-        position: '',
-        department: '',
-        email: '',
         image: null,
         image_preview: null,
         existing_image: null
@@ -1235,7 +1461,6 @@ export default {
       const file = event.target.files[0]
       if (!file) return
       
-      console.log('Employee image selected:', file.name, 'Size:', file.size, 'Type:', file.type)
       
       // Set the local reference for later upload and preview
       this.buildingForm.employees[index].image = file
@@ -1332,7 +1557,6 @@ export default {
       }
 
       try {
-        console.log('Saving building...')
         
         // Create form data object
         const formData = new FormData()
@@ -1346,6 +1570,7 @@ export default {
         formData.append('width', parseInt(this.buildingForm.image_width))
         formData.append('height', parseInt(this.buildingForm.image_height))
         
+        
         // Add map_id
         const mapId = this.buildingForm.map_id || (this.activeMap ? this.activeMap.id : null)
         if (!mapId) {
@@ -1353,6 +1578,9 @@ export default {
           return
         }
         formData.append('map_id', mapId)
+        
+        // Always mark as unpublished for now - we'll handle visibility in backend
+        formData.append('is_published', false)
         
         // Add image if available
         if (this.$refs.buildingImageInput && this.$refs.buildingImageInput.files[0]) {
@@ -1377,9 +1605,6 @@ export default {
           // Add each employee's data
           validEmployees.forEach((employee, index) => {
             formData.append(`employees[${index}][name]`, employee.name.trim())
-            formData.append(`employees[${index}][position]`, employee.position || '')
-            formData.append(`employees[${index}][department]`, employee.department || '')
-            formData.append(`employees[${index}][email]`, employee.email || '')
             
             // Include employee ID if editing existing employee (for image preservation)
             if (employee.id) {
@@ -1397,15 +1622,15 @@ export default {
         }
         
         // Handle updating vs creating
-        let response
         
         if (this.editingBuilding) {
-          console.log('Updating building with ID:', this.editingBuilding.id)
           
           // For update, convert to raw XMLHttpRequest for maximum compatibility
           await new Promise((resolve, reject) => {
             const xhr = new XMLHttpRequest()
-            xhr.open('POST', `${axios.defaults.baseURL}/api/buildings/${this.editingBuilding.id}`)
+            xhr.open('POST', `https://web-production-4859.up.railway.app/api/buildings/${this.editingBuilding.id}`)
+            xhr.withCredentials = true
+            xhr.setRequestHeader('Accept', 'application/json')
             
             // Set up proper method override for Laravel
             formData.append('_method', 'PUT')
@@ -1431,27 +1656,28 @@ export default {
             }
             
             xhr.send(formData)
-          }).then(data => {
-            response = { data }
-            console.log('Building updated successfully via XHR:', data)
-            
+          }).then(() => {
             // Show success toast notification for building update
             this.$refs.toast.success('Building Updated', 'Building has been successfully updated.')
+            
+            // Update unpublished count
+            this.fetchUnpublishedCount()
           })
         } else {
           // For create, use axios directly
-          response = await axios.post('/api/buildings', formData, {
+          await axios.post('/buildings', formData, {
             headers: { 'Content-Type': 'multipart/form-data' }
           })
-          console.log('New building created:', response.data)
           
           // Show success toast notification for new building
           this.$refs.toast.success('Building Created', 'New building has been successfully added to the system.')
+          
+          // Update unpublished count
+          this.fetchUnpublishedCount()
         }
         
         // Refresh buildings from the server to get latest data
         await this.fetchBuildings()
-        console.log('Refreshed building list after save')
         
         // Close modal and reset form
         this.closeBuildingModal()
@@ -1459,10 +1685,63 @@ export default {
 
       } catch (error) {
         console.error('Error saving building:', error)
-        this.$refs.toast.error('Save Failed', `Failed to save building: ${error.message || 'Unknown error'}`)
+        
+        // Extract detailed error message from response
+        let errorMessage = 'Unknown error'
+        let errorCode = null
+        
+        // Handle different error structures
+        if (error.response && error.response.data) {
+          // Standard axios error structure
+          if (typeof error.response.data === 'string') {
+            try {
+              const parsedData = JSON.parse(error.response.data)
+              errorMessage = parsedData.message || parsedData.error || error.response.data
+              errorCode = parsedData.error_code
+            } catch (e) {
+              errorMessage = error.response.data
+            }
+          } else if (error.response.data && typeof error.response.data === 'object') {
+            errorMessage = error.response.data.message || error.response.data.error
+            errorCode = error.response.data.error_code
+            if (error.response.data.errors) {
+              const errors = error.response.data.errors
+              const firstError = Object.values(errors)[0]
+              errorMessage = Array.isArray(firstError) ? firstError[0] : firstError
+            }
+          }
+        } else if (error.response && typeof error.response === 'string') {
+          // Direct response string
+          try {
+            const parsedData = JSON.parse(error.response)
+            errorMessage = parsedData.message || parsedData.error || 'Parsing error'
+            errorCode = parsedData.error_code
+          } catch (e) {
+            errorMessage = error.response
+          }
+        } else if (error.message) {
+          errorMessage = error.message
+        }
+
+        // Show specific warnings based on error content and error codes
+        if (errorCode === 'DUPLICATE_EMAIL' || errorMessage.includes('Duplicate email addresses found') || errorMessage.includes('already in use')) {
+          this.$refs.toast.warning('Duplicate Email Detected', errorMessage)
+        } else if (errorMessage.includes('validation') || errorMessage.includes('required')) {
+          this.$refs.toast.warning('Validation Error', errorMessage)
+        } else if (errorMessage.includes('permission') || errorMessage.includes('unauthorized')) {
+          this.$refs.toast.error('Access Denied', errorMessage)
+        } else {
+          this.$refs.toast.error('Save Failed', `Failed to save building: ${errorMessage}`)
+        }
       }
     },
     
+    openAddBuildingModal() {
+      // Ensure buildingForm.map_id is set to the current active map
+      this.buildingForm.map_id = this.activeMap ? this.activeMap.id : null
+      this.showAddBuildingModal = true
+    },
+
     closeBuildingModal() {
       this.showAddBuildingModal = false
       this.editingBuilding = null
@@ -1494,7 +1773,7 @@ export default {
       this.mapForm = { 
         ...map,
         // If the map has an image path, create the complete URL for display
-        image_path: map.image_path ? 'http://localhost:8000/storage/' + map.image_path : null
+        image_path: map.image_path ? 'https://web-production-4859.up.railway.app/storage/' + map.image_path : null
       }
       this.showAddMapModal = true
     },
@@ -1502,28 +1781,54 @@ export default {
     showMapDeleteConfirmation(map) {
       this.mapToDelete = map
       this.showMapDeleteModal = true
+      this.startMapCountdown()
+    },
+
+    closeMapDeleteModal() {
+      this.stopMapCountdown()
+      this.showMapDeleteModal = false
+      this.mapToDelete = null
+      this.mapDeleteCountdown = 3
+    },
+
+    startMapCountdown() {
+      this.mapDeleteCountdown = 3
+      this.mapCountdownInterval = setInterval(() => {
+        this.mapDeleteCountdown--
+        if (this.mapDeleteCountdown <= 0) {
+          this.stopMapCountdown()
+        }
+      }, 1000)
+    },
+
+    stopMapCountdown() {
+      if (this.mapCountdownInterval) {
+        clearInterval(this.mapCountdownInterval)
+        this.mapCountdownInterval = null
+      }
     },
 
     async confirmMapDelete() {
       if (!this.mapToDelete) return
       
       try {
-        await axios.delete(`/api/map/${this.mapToDelete.id}`)
+        await axios.delete(`/map/${this.mapToDelete.id}`)
         await this.fetchMaps()
         
+        // Update unpublished count after map deletion
+        this.fetchUnpublishedCount()
+        
         // Show success toast notification
-        this.$refs.toast.success('Map Deleted', 'Map has been successfully removed from the system.')
+        this.$refs.toast.success('Map Marked for Deletion', 'Map has been marked for deletion and will be removed when you publish changes.')
         
         // Close the confirmation modal
-        this.showMapDeleteModal = false
-        this.mapToDelete = null
+        this.closeMapDeleteModal()
       } catch (error) {
         console.error('Error deleting map:', error)
         this.$refs.toast.error('Delete Failed', 'Error deleting map. Please try again.')
         
         // Close the confirmation modal
-        this.showMapDeleteModal = false
-        this.mapToDelete = null
+        this.closeMapDeleteModal()
       }
     },
 
@@ -1537,8 +1842,10 @@ export default {
     
     async setActiveMap(id) {
       try {
-        await axios.put(`/api/map/${id}/activate`)
+        await axios.put(`/map/${id}/activate`)
         await this.fetchMaps()
+        // Update unpublished count after map activation change
+        this.fetchUnpublishedCount()
       } catch (error) {
         console.error('Error setting active map:', error)
         this.$refs.toast.error('Activation Failed', 'Error setting active map. Please try again.')
@@ -1549,11 +1856,31 @@ export default {
       const file = event.target.files[0]
       if (!file) return
 
+      // Check file size (100MB = 100 * 1024 * 1024 bytes)
+      const maxSize = 100 * 1024 * 1024 // 100MB in bytes
+      if (file.size > maxSize) {
+        this.$refs.toast.error('File Too Large', `Image file is ${(file.size / (1024 * 1024)).toFixed(1)}MB. Maximum allowed size is 100MB.`)
+        // Clear the file input
+        event.target.value = ''
+        return
+      }
+
+      // Check file type
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
+      if (!allowedTypes.includes(file.type)) {
+        this.$refs.toast.error('Invalid File Type', 'Please select a valid image file (JPEG, PNG, GIF, or WebP).')
+        // Clear the file input
+        event.target.value = ''
+        return
+      }
+
       // Just set the local preview
       this.mapForm.image_path = URL.createObjectURL(file)
       // Store the file object for uploading
       this.mapForm.image = file
-      console.log('Image preview set:', this.mapForm.image_path)
+      
+      // Show success message for valid file
+      this.$refs.toast.success('Image Selected', `Image loaded successfully (${(file.size / (1024 * 1024)).toFixed(1)}MB)`)
       
       // We'll upload the file when the form is submitted
     },
@@ -1565,31 +1892,38 @@ export default {
         formData.append('width', parseInt(this.mapForm.width) || 800) // Default to 800 if not valid
         formData.append('height', parseInt(this.mapForm.height) || 600) // Default to 600 if not valid
         
+        // Set as unpublished so changes don't auto-reflect to app
+        formData.append('is_published', false)
+        
         // Check for image file
         if (this.$refs.mapImageInput && this.$refs.mapImageInput.files[0]) {
           formData.append('image', this.$refs.mapImageInput.files[0])
       }
 
-        let response
         if (this.editingMap) {
           // Update existing map
-          response = await axios.post(`/api/map/${this.editingMap.id}?_method=PUT`, formData, {
+          await axios.post(`/map/${this.editingMap.id}?_method=PUT`, formData, {
             headers: { 'Content-Type': 'multipart/form-data' }
           })
           
           // Show success toast notification for map update
           this.$refs.toast.success('Map Updated', 'Map has been successfully updated.')
+          
+          // Update unpublished count
+          this.fetchUnpublishedCount()
         } else {
                   // Create new map
-        response = await axios.post('/api/map', formData, {
+        await axios.post('/map', formData, {
           headers: { 'Content-Type': 'multipart/form-data' }
         })
         
         // Show success toast notification for new map
         this.$refs.toast.success('Map Created', 'New map has been successfully created.')
+        
+        // Update unpublished count
+        this.fetchUnpublishedCount()
         }
 
-        console.log('Map saved successfully:', response.data)
         await this.fetchMaps()
         this.closeMapModal()
         
@@ -1597,7 +1931,30 @@ export default {
       } catch (error) {
         console.error('Error saving map:', error)
         console.error('Response data:', error.response?.data)
-        this.$refs.toast.error('Save Failed', 'Error saving map. Please try again.')
+        
+        // Handle specific validation errors
+        if (error.response?.status === 422) {
+          const responseData = error.response.data
+          if (responseData.message && responseData.message.includes('image field must not be greater than')) {
+            this.$refs.toast.error('File Too Large', 'The image file is too large. Please use an image smaller than 100MB.')
+          } else if (responseData.errors) {
+            // Handle other validation errors
+            const firstError = Object.values(responseData.errors)[0]
+            if (Array.isArray(firstError) && firstError.length > 0) {
+              this.$refs.toast.error('Validation Error', firstError[0])
+            } else {
+              this.$refs.toast.error('Validation Error', 'Please check your input and try again.')
+            }
+          } else {
+            this.$refs.toast.error('Validation Error', responseData.message || 'Please check your input and try again.')
+          }
+        } else if (error.response?.status === 413) {
+          this.$refs.toast.error('File Too Large', 'The image file is too large for the server to process.')
+        } else if (error.response?.status >= 500) {
+          this.$refs.toast.error('Server Error', 'A server error occurred. Please try again later.')
+        } else {
+          this.$refs.toast.error('Save Failed', 'Error saving map. Please try again.')
+        }
       }
     },
     
@@ -1606,8 +1963,8 @@ export default {
       this.editingMap = null
       this.mapForm = {
         name: '',
-        width: '',
-        height: '',
+        width: '5500',
+        height: '2700',
         image: null,
         image_path: null
       }
@@ -1618,21 +1975,14 @@ export default {
       })
     },
     
-    setMapDimensions(width, height) {
-      this.mapForm.width = width.toString()
-      this.mapForm.height = height.toString()
-    },
     
     getImagePath(building) {
       // Debug data coming from backend
-      console.log(`Building ${building.id} image data:`, { 
-        image_path: building.image_path 
-      })
       
       // The image path is already in the correct format (images/buildings/...)
       // We just need to prefix it with the storage URL
       if (building.image_path) {
-        return 'http://localhost:8000/storage/' + building.image_path
+        return 'https://web-production-4859.up.railway.app/storage/' + building.image_path
       }
       
       // Use a default placeholder image when no image is available
@@ -1642,7 +1992,6 @@ export default {
     // Test method to directly upload an image to the server
     async testDirectImageUpload() {
       if (!this.$refs.buildingImageInput || !this.$refs.buildingImageInput.files[0]) {
-        console.log('❌ No image selected for test upload')
         return
       }
       
@@ -1651,18 +2000,12 @@ export default {
         const file = this.$refs.buildingImageInput.files[0]
         formData.append('image', file)
         
-        console.log('🧪 Testing direct image upload with:', file.name, file.size, file.type)
         
-        const response = await axios.post('/api/buildings/upload', formData, {
+        await axios.post('/buildings/upload', formData, {
           headers: { 'Content-Type': 'multipart/form-data' }
         })
         
-        console.log('✅ Direct upload response:', response.data)
         
-        if (response.data.path) {
-          console.log('Image was stored at:', response.data.path)
-          console.log('Full URL would be:', 'http://localhost:8000/storage/' + response.data.path)
-        }
       } catch (error) {
         console.error('❌ Direct upload error:', error)
         if (error.response) {
@@ -1672,17 +2015,13 @@ export default {
     },
     
     async diagnoseBuildingIssues() {
-      console.log('🔍 DIAGNOSING BUILDING ISSUES')
-      
       // 1. Check building data loaded in memory
-      console.log('Current buildings array:', this.buildings)
       
       // 2. Make a fresh API call to compare with local data
       try {
-        const response = await axios.get('/api/buildings')
+        const response = await axios.get('/buildings')
         const freshBuildings = response.data || []
         
-        console.log('Fresh buildings from API:', freshBuildings)
         
         // 3. Compare loaded buildings with fresh API results
         if (this.buildings.length !== freshBuildings.length) {
@@ -1690,13 +2029,8 @@ export default {
         }
         
         // 4. Check for image path issues in each building
-        console.log('Checking individual buildings for image_path issues:')
         freshBuildings.forEach(apiBldg => {
           const memBldg = this.buildings.find(b => b.id === apiBldg.id)
-          
-          console.log(`Building ID ${apiBldg.id} (${apiBldg.building_name}):`)
-          console.log(`  API image_path: "${apiBldg.image_path}"`)
-          console.log(`  Memory image_path: "${memBldg?.image_path}"`)
           
           if (memBldg && memBldg.image_path !== apiBldg.image_path) {
             console.warn('⚠️ Image path mismatch for building', apiBldg.id)
@@ -1705,31 +2039,23 @@ export default {
           // Test if image actually loads
           if (apiBldg.image_path) {
             const img = new Image()
-            img.onload = () => console.log(`✅ Image for building ${apiBldg.id} loads successfully`)
+            img.onload = () => {}
             img.onerror = () => console.error(`❌ Image for building ${apiBldg.id} FAILS to load`)
-            img.src = `http://localhost:8000/storage/${apiBldg.image_path}`
-        } else {
-            console.log(`⚠️ No image path for building ${apiBldg.id}`)
-          }
+            img.src = `https://web-production-4859.up.railway.app/storage/${apiBldg.image_path}`
+        }
         })
         
         // 5. Check Laravel public storage link
         try {
-          const testURL = 'http://localhost:8000/storage/test-access.txt'
-          console.log('Testing storage symlink with URL:', testURL)
-          
-          const storageTest = await axios.head(testURL)
-          console.log('Storage test result:', storageTest.status)
-          console.log('✅ Storage symlink appears to be working')
+          const testURL = 'https://web-production-4859.up.railway.app/storage/test-access.txt'
+          await axios.head(testURL)
       } catch (error) {
           console.error('❌ Storage symlink test failed:', error.message)
-          console.log('This may indicate the Laravel storage:link command has not been run')
         }
         
         // 6. Test PUT method on a building (without changing it)
         if (freshBuildings.length > 0) {
           const testBuilding = freshBuildings[0]
-          console.log('Testing PUT method on building:', testBuilding.id)
           
           try {
             // Create a minimal FormData with just the name
@@ -1740,15 +2066,13 @@ export default {
             formData.append('y_coordinate', testBuilding.y_coordinate)
             
             // Attempt the PUT request
-            const updateResponse = await axios({
+            await axios({
               method: 'put',
-              url: `/api/buildings/${testBuilding.id}`,
+              url: `/buildings/${testBuilding.id}`,
               data: formData,
               headers: { 'Content-Type': 'multipart/form-data' }
             })
             
-            console.log('PUT test succeeded:', updateResponse.status)
-            console.log('Response data:', updateResponse.data)
           } catch (error) {
             console.error('❌ PUT test failed:', error.message)
             if (error.response) {
@@ -1778,6 +2102,52 @@ export default {
     setImageSize(width, height) {
       this.buildingForm.image_width = width
       this.buildingForm.image_height = height
+      this.imageSizeSlider = width // Update slider to match the preset
+    },
+
+    updateImageSizeFromSlider() {
+      // Set both width and height to the same value from slider
+      this.buildingForm.image_width = this.imageSizeSlider
+      this.buildingForm.image_height = this.imageSizeSlider
+    },
+
+    handleKeyDown(event) {
+      // Only handle arrow keys when building modal is open and coordinates are set
+      if (!this.showAddBuildingModal && !this.editingBuilding) return
+      if (!this.buildingForm.x_coordinate || !this.buildingForm.y_coordinate) return
+      
+      // Check if we're in an input field - don't handle arrow keys there
+      if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') return
+      
+      const step = event.shiftKey ? 10 : 1 // Shift + arrow = 10px steps, normal arrow = 1px steps
+      let newX = parseInt(this.buildingForm.x_coordinate)
+      let newY = parseInt(this.buildingForm.y_coordinate)
+      
+      switch (event.key) {
+        case 'ArrowUp':
+          event.preventDefault()
+          newY = Math.max(0, newY - step)
+          break
+        case 'ArrowDown':
+          event.preventDefault()
+          newY = Math.min(this.activeMap?.height || 1000, newY + step)
+          break
+        case 'ArrowLeft':
+          event.preventDefault()
+          newX = Math.max(0, newX - step)
+          break
+        case 'ArrowRight':
+          event.preventDefault()
+          newX = Math.min(this.activeMap?.width || 1000, newX + step)
+          break
+        default:
+          return // Don't prevent default for other keys
+      }
+      
+      // Update coordinates
+      this.buildingForm.x_coordinate = newX
+      this.buildingForm.y_coordinate = newY
+      this.newBuildingPosition = { x: newX, y: newY }
     },
     
     // Map interaction methods
@@ -1795,18 +2165,9 @@ export default {
       }
       event.preventDefault()
       
-      console.log('🖱️ Drag started:', { 
-        startPos: `(${event.clientX}, ${event.clientY})`,
-        currentScroll: `(${this.lastDragPosition.x}, ${this.lastDragPosition.y})`
-      })
     },
     
     stopDrag() {
-      if (this.isDragging) {
-        console.log('🖱️ Drag ended:', { 
-          finalScroll: `(${this.$refs.mapCanvas.scrollLeft}, ${this.$refs.mapCanvas.scrollTop})`
-        })
-      }
       this.isDragging = false
     },
     
@@ -1845,7 +2206,6 @@ export default {
         this.constrainMapToLimits()
       })
       
-      console.log('🔍 Zoom in:', { oldScale: this.mapScale / 1.2, newScale: this.mapScale })
     },
     
     zoomOut() {
@@ -1858,7 +2218,6 @@ export default {
         this.constrainMapToLimits()
       })
       
-      console.log('🔍 Zoom out:', { oldScale: this.mapScale * 1.2, newScale: this.mapScale })
     },
     
     resetMapView() {
@@ -1907,19 +2266,14 @@ export default {
       mapCanvas.scrollLeft = Math.max(0, Math.min(limits.maxScrollX, newScrollX))
       mapCanvas.scrollTop = Math.max(0, Math.min(limits.maxScrollY, newScrollY))
       
-      console.log('🔍 Zoom click:', { 
-        mousePos: `(${mouseX}, ${mouseY})`, 
-        scaleChange, 
-        newScale,
-        newScroll: `(${newScrollX}, ${newScrollY})`,
-        limits
-      })
     },
     
     getMapWrapperStyle() {
       return {
         position: 'relative',
-        display: 'inline-block',
+        display: 'block',
+        width: '100%',
+        height: '100%',
         transformOrigin: '0 0',
         transform: `scale(${this.mapScale})`
       }
@@ -1939,25 +2293,10 @@ export default {
       event.target.style.display = 'none'
     },
 
-    handleImageLoad(event) {
-      console.log('Image loaded successfully:', event.target.src)
+    handleImageLoad() {
     },
     
-    onMapImageLoad(event) {
-      console.log('🎯 Map image loaded successfully!')
-      console.log('📏 Map dimensions from database:', {
-        width: this.activeMap.width,
-        height: this.activeMap.height
-      })
-      console.log('🖼️ Actual image dimensions:', {
-        naturalWidth: event.target.naturalWidth,
-        naturalHeight: event.target.naturalHeight
-      })
-      console.log('💻 Applied CSS dimensions:', {
-        width: event.target.style.width,
-        height: event.target.style.height
-      })
-      
+    onMapImageLoad() {
       // Calculate initial zoom to fit the entire map in view
       this.$nextTick(() => {
         this.calculateInitialZoom()
@@ -2005,7 +2344,7 @@ export default {
       // 0.90 = 90% (zoomed in even more)
       // 0.85 = 85% (zoomed in a lot)
       // 1.0 = 100% (no padding - exact fit)
-      const paddedScale = fitScale * 0.95  // 95% = more zoomed in
+      const paddedScale = fitScale * 1.0  // 100% = exact fit, no gap
       this.mapScale = Math.max(0.1, paddedScale)
       
       // Option B: Set fixed zoom level (uncomment one of these):
@@ -2020,15 +2359,6 @@ export default {
         this.updateScrollVisibility()
       })
       
-      console.log('🔍 Initial zoom calculation:', {
-        containerSize: `${containerRect.width}x${containerRect.height}`,
-        mapSize: `${mapWidth}x${mapHeight}`,
-        scaleX,
-        scaleY,
-        fitScale,
-        paddedScale,
-        finalScale: this.mapScale
-      })
     },
 
 
@@ -2051,12 +2381,6 @@ export default {
       mapContainer.scrollLeft = centerX
       mapContainer.scrollTop = centerY
       
-      console.log('🎯 Centered map:', {
-        containerSize: `${containerRect.width}x${containerRect.height}`,
-        imageSize: `${imageRect.width}x${imageRect.height}`,
-        centerScroll: `(${centerX}, ${centerY})`,
-        limits
-      })
     },
     
     updateScrollVisibility() {
@@ -2074,14 +2398,6 @@ export default {
         mapContainer.style.overflow = 'hidden'
       }
       
-      console.log('📏 Scroll visibility:', {
-        hasHorizontalOverflow,
-        hasVerticalOverflow,
-        scrollWidth: mapContainer.scrollWidth,
-        clientWidth: mapContainer.clientWidth,
-        scrollHeight: mapContainer.scrollHeight,
-        clientHeight: mapContainer.clientHeight
-      })
     },
 
     calculateScrollLimits() {
@@ -2103,13 +2419,6 @@ export default {
       const maxScrollX = Math.max(0, scaledMapWidth - containerRect.width)
       const maxScrollY = Math.max(0, scaledMapHeight - containerRect.height)
       
-      console.log('🚧 Scroll limits calculated:', {
-        activeMapSize: `${this.activeMap.width}x${this.activeMap.height}`,
-        mapScale: this.mapScale,
-        scaledMapSize: `${scaledMapWidth}x${scaledMapHeight}`,
-        containerSize: `${containerRect.width}x${containerRect.height}`,
-        maxScroll: `(${maxScrollX}, ${maxScrollY})`
-      })
       
       return { maxScrollX, maxScrollY }
     },
@@ -2133,11 +2442,6 @@ export default {
         mapContainer.scrollLeft = constrainedScrollX
         mapContainer.scrollTop = constrainedScrollY
         
-        console.log('🔒 Map constrained to limits:', {
-          before: `(${currentScrollX}, ${currentScrollY})`,
-          after: `(${constrainedScrollX}, ${constrainedScrollY})`,
-          limits: `(${limits.maxScrollX}, ${limits.maxScrollY})`
-        })
       }
     },
 
@@ -2150,9 +2454,262 @@ export default {
       // Hide coordinate preview
       this.coordPreview.visible = false
       
-      console.log('🗑️ Position marker cleared')
+    },
+    
+    // Publication/Push Update methods
+    async fetchUnpublishedCount() {
+      try {
+        const response = await axios.get('/publish/status')
+        this.unpublishedCount = response.data.unpublished.total
+      } catch (error) {
+        console.error('Error fetching unpublished count:', error)
+      }
+    },
+    
+    showPublishModal() {
+      if (this.unpublishedCount === 0) {
+        this.$refs.toast.info('No Updates', 'No unpublished changes to push.')
+        return
+      }
+      
+      this.showPublishChangesModal = true
+    },
+    
+    handlePublishCancel() {
+      this.showPublishChangesModal = false
+    },
+    
+    handlePublishSuccess(data) {
+      this.showPublishChangesModal = false
+      this.$refs.toast.success('Updates Pushed', `Successfully published ${data.total_published} items to the app.`)
+      this.unpublishedCount = 0
+      // Refresh the data to reflect published changes
+      this.fetchMaps()
+      this.fetchBuildings()
+    },
+    
+    handlePublishError(message) {
+      this.showPublishChangesModal = false
+      this.$refs.toast.error('Push Failed', message || 'Failed to push updates to the app.')
+    },
+    
+    handleChangeProcessed(changeData) {
+      // Handle individual change processing
+      const { type } = changeData
+      
+      switch (type) {
+        case 'building-deleted':
+          this.$refs.toast.success('Moved to Trash', 'Building has been moved to trash.')
+          break
+        case 'building-restored':
+          this.$refs.toast.success('Building Restored', 'Building has been restored from trash.')
+          break
+        case 'building-reverted':
+          this.$refs.toast.success('Changes Reverted', 'Building changes have been reverted.')
+          break
+        case 'building-published':
+          this.$refs.toast.success('Building Published', 'Building has been published to the app.')
+          break
+        case 'building-deletion-published':
+          this.$refs.toast.success('Moved to Trash', 'Building has been moved to trash.')
+          break
+        case 'map-reverted':
+          this.$refs.toast.success('Map Changes Reverted', 'Map changes have been reverted.')
+          break
+        case 'map-published':
+          this.$refs.toast.success('Map Published', 'Map has been published to the app.')
+          break
+        case 'map-restored':
+          this.$refs.toast.success('Map Restored', 'Map has been restored from trash.')
+          // Fully refresh data so publish button/count reacts and map returns without waiting for bulk publish
+          this.fetchMaps()
+          this.fetchBuildings()
+          this.fetchUnpublishedCount()
+          break
+        case 'map-deletion-published':
+          // Avoid racing the modal's refresh; only update the counter
+          this.$refs.toast.success('Moved to Trash', 'Map has been moved to trash.')
+          this.fetchUnpublishedCount()
+          return
+      }
+      
+      // Refresh data and unpublished count
+      this.fetchMaps()
+      this.fetchBuildings()
+      this.fetchUnpublishedCount()
+    },
+    
+    // Keep the old method for backward compatibility (if needed elsewhere)
+    async pushUpdates() {
+      if (this.unpublishedCount === 0) {
+        this.$refs.toast.info('No Updates', 'No unpublished changes to push.')
+        return
+      }
+      
+      try {
+        const response = await axios.post('/publish/all')
+        this.$refs.toast.success('Updates Pushed', `Successfully published ${response.data.total_published} items to the app.`)
+        this.unpublishedCount = 0
+      } catch (error) {
+        console.error('Error pushing updates:', error)
+        this.$refs.toast.error('Push Failed', 'Failed to push updates to the app.')
+      }
     },
 
+    showToast(title, message, type = 'info') {
+      if (this.$refs.toast) {
+        this.$refs.toast[type](title, message)
+      }
+    },
+
+    // Room Management Methods
+    openRoomsManagement() {
+      // For new buildings, we need to save first or use a temporary building object
+      if (!this.editingBuilding && !this.buildingForm.name) {
+        this.$refs.toast?.info('Info', 'Please enter a building name first before managing rooms.')
+        return
+      }
+      
+      // If it's a new building, we'll need to handle it differently
+      if (!this.editingBuilding) {
+        this.$refs.toast?.info('Info', 'Please save the building first, then you can manage rooms.')
+        return
+      }
+      
+      this.showRoomsManagementModal = true
+    },
+
+    closeRoomsManagement() {
+      this.showRoomsManagementModal = false
+    },
+
+    handleRoomAdded(room) {
+      this.$refs.toast?.success('Room Added', `Room "${room.name}" has been added successfully.`)
+      // Refresh building data to include new room count
+      this.fetchBuildings()
+      // Update unpublished count for publish button
+      this.fetchUnpublishedCount()
+    },
+
+    handleRoomUpdated(room) {
+      this.$refs.toast?.success('Room Updated', `Room "${room.name}" has been updated successfully.`)
+      // Refresh building data
+      this.fetchBuildings()
+      // Update unpublished count for publish button
+      this.fetchUnpublishedCount()
+    },
+
+    handleRoomDeleted(room) {
+      this.$refs.toast?.success('Room Deleted', `Room "${room.name}" has been deleted successfully.`)
+      // Refresh building data
+      this.fetchBuildings()
+      // Update unpublished count for publish button
+      this.fetchUnpublishedCount()
+    },
+
+    // Export/Import functionality
+    async exportMap(map) {
+      if (!map) {
+        this.$refs.toast.error('No Map Selected', 'Please select a map to export')
+        return
+      }
+
+      this.exporting = true
+      try {
+        const response = await axios.get(`/map-export/${map.id}`, {
+          responseType: 'blob'
+        })
+        
+        if (response.status === 200) {
+          // Create blob URL and trigger download
+          const blob = new Blob([response.data], { type: 'application/zip' })
+          const url = window.URL.createObjectURL(blob)
+          
+          // Generate filename from map name and current date
+          const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-')
+          const filename = `map_export_${map.name.replace(/[^a-zA-Z0-9_-]/g, '_')}_${timestamp}.zip`
+          
+          const link = document.createElement('a')
+          link.href = url
+          link.download = filename
+          document.body.appendChild(link)
+          link.click()
+          document.body.removeChild(link)
+          window.URL.revokeObjectURL(url)
+          
+          this.$refs.toast.success('Export Successful', `Map "${map.name}" has been exported successfully`)
+        } else {
+          throw new Error('Export failed')
+        }
+      } catch (error) {
+        console.error('Export error:', error)
+        this.$refs.toast.error('Export Failed', error.response?.data?.message || error.message || 'Failed to export map')
+      } finally {
+        this.exporting = false
+      }
+    },
+
+    openImportModal() {
+      this.showImportModal = true
+    },
+
+    closeImportModal() {
+      this.showImportModal = false
+    },
+
+    async handleImportMap(file) {
+      this.importing = true
+      try {
+        console.log('Starting import process', {
+          fileName: file.name,
+          fileSize: file.size,
+          fileType: file.type
+        })
+
+        const formData = new FormData()
+        formData.append('map_file', file)
+
+        console.log('Sending import request to /map-export/import')
+        const response = await axios.post('/map-export/import', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          },
+          timeout: 300000 // 5 minutes timeout for large files
+        })
+
+        console.log('Import response received', response.data)
+
+        if (response.data.success) {
+          this.$refs.toast.success('Import Successful', `Map "${response.data.map?.name || 'Unknown'}" has been imported successfully`)
+          this.closeImportModal()
+          // Refresh the maps list
+          await this.fetchMaps()
+          // Update unpublished count for publish button
+          this.fetchUnpublishedCount()
+        } else {
+          throw new Error(response.data.message || 'Import failed')
+        }
+      } catch (error) {
+        console.error('Import error:', error)
+        let errorMessage = 'Failed to import map'
+        
+        if (error.response?.data?.message) {
+          errorMessage = error.response.data.message
+        } else if (error.message) {
+          errorMessage = error.message
+        } else if (error.code === 'ECONNABORTED') {
+          errorMessage = 'Import timeout - file may be too large or server is busy'
+        } else if (error.response?.status === 413) {
+          errorMessage = 'File too large - please reduce file size and try again'
+        } else if (error.response?.status === 422) {
+          errorMessage = 'Invalid file format - please ensure you are uploading a valid ZIP file'
+        }
+        
+        this.$refs.toast.error('Import Failed', errorMessage)
+      } finally {
+        this.importing = false
+      }
+    }
 
   }
 }
@@ -2219,6 +2776,37 @@ export default {
 .header-actions {
   display: flex;
   gap: 0.5rem;
+}
+
+.header-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  color: #475569;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.header-btn:hover {
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
+.trash-btn {
+  color: #dc2626;
+}
+
+.trash-btn:hover {
+  background: #fef2f2;
+  border-color: #fca5a5;
+  color: #b91c1c;
 }
 
 .btn-secondary {
@@ -2699,6 +3287,52 @@ export default {
   border-color: #c82333;
 }
 
+.push-btn {
+  position: relative;
+  background: #10b981;
+  color: white;
+  border-color: #10b981;
+}
+
+.push-btn:hover {
+  background: #059669;
+  border-color: #059669;
+}
+
+.push-btn.has-updates {
+  background: #f59e0b;
+  border-color: #f59e0b;
+  animation: pulse 2s infinite;
+}
+
+.push-btn.has-updates:hover {
+  background: #d97706;
+  border-color: #d97706;
+}
+
+.update-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: #dc2626;
+  color: white;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  font-size: 10px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid white;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
 .zoom-controls {
   display: flex;
   align-items: center;
@@ -2782,7 +3416,9 @@ export default {
 
 .map-wrapper {
   position: relative;
-  display: inline-block;
+  display: block;
+  width: 100%;
+  height: 100%;
   transform-origin: 0 0;
 }
 
@@ -3312,17 +3948,6 @@ export default {
   font-style: italic;
 }
 
-.preset-buttons {
-  display: flex;
-  gap: 8px;
-  margin-top: 8px;
-}
-
-.preset-buttons .btn-secondary.small {
-  padding: 6px 12px;
-  font-size: 12px;
-  flex: 1;
-}
 
 .building-modal {
   max-width: 600px; /* Wider to accommodate the map picker */
@@ -3363,6 +3988,85 @@ export default {
 
 .size-inputs > div {
   flex: 1;
+}
+
+/* Slider Styles */
+.size-slider-container {
+  margin-bottom: 1rem;
+}
+
+.slider-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.slider-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.size-input {
+  width: 80px;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  text-align: center;
+  background: #fff;
+}
+
+.size-input:focus {
+  outline: none;
+  border-color: #4CAF50;
+  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+}
+
+.size-slider {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: #ddd;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+}
+
+.size-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #4CAF50;
+  cursor: pointer;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.size-slider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #4CAF50;
+  cursor: pointer;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.slider-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.25rem;
+}
+
+.slider-label {
+  font-size: 0.75rem;
+  color: #666;
+  font-weight: 500;
 }
 
 .size-inputs label {
@@ -3805,6 +4509,18 @@ export default {
   margin-bottom: 4px;
   font-size: 0.85em;
   font-weight: 500;
+}
+
+.coordinate-hint {
+  grid-column: 1 / -1;
+  margin-top: 8px;
+  text-align: center;
+}
+
+.hint-text {
+  color: #6b7280;
+  font-size: 0.8em;
+  font-style: italic;
 }
 
 /* Improved spacing for employee section in wider modal */
@@ -4377,6 +5093,66 @@ export default {
   transform: translateY(-1px);
 }
 
+.modern-btn-rooms {
+  flex: 1;
+  padding: 14px 24px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 2px 4px rgba(102, 126, 234, 0.2);
+}
+
+.modern-btn-rooms:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+  background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+}
+
+.modern-btn-rooms .btn-icon {
+  font-size: 16px;
+}
+
+.modern-btn-rooms-inline {
+  background: linear-gradient(135deg, #2dbb74 0%, #0ccc72 100%);
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 2px 4px rgba(102, 126, 234, 0.2);
+  width: 100%;
+  justify-content: center;
+}
+
+.modern-btn-rooms-inline:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+  background: linear-gradient(135deg, #26a666 0%, #0ab963 100%);
+}
+
+.modern-btn-rooms-inline .btn-icon {
+  font-size: 16px;
+}
+
+.modern-btn-rooms-inline .btn-text {
+  font-weight: 500;
+}
+
 .modern-btn-secondary {
   padding: 8px 16px;
   background: #f1f5f9;
@@ -4426,10 +5202,6 @@ export default {
   color: #334155;
 }
 
-.preset-buttons {
-  display: flex;
-  gap: 8px;
-}
 
 /* Modern Employee Section */
 .section-subtitle {
@@ -4441,7 +5213,7 @@ export default {
   border-bottom: 2px solid #e2e8f0;
 }
 
-.modern-employees-list {
+. {
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -4452,6 +5224,7 @@ export default {
   background: #f8fafc;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
+  height: 90px;
   padding: 16px;
 }
 
@@ -4497,7 +5270,7 @@ export default {
 
 .modern-employee-actions {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: 8px;
   flex-shrink: 0;
   position: relative;
@@ -4550,6 +5323,12 @@ export default {
   color: #64748b;
   margin: 0;
   line-height: 1.5;
+}
+
+.instruction-text.small {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 4px;
 }
 
 /* Image Previews */
@@ -4975,12 +5754,264 @@ export default {
     right: -100vw;
   }
   
-  .preset-buttons {
-    flex-direction: column;
-  }
   
   .modern-form-actions {
     flex-direction: column;
+  }
+}
+
+.countdown-display {
+  font-size: 30px;
+  font-weight: bold;
+  color: #dc2626;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 4px solid #dc2626;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+/* Delete Modal Styles with Modern Inter Font */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+.delete-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+  font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}
+
+.delete-modal-content {
+  background: white;
+  border-radius: 16px;
+  padding: 32px;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+  position: relative;
+  animation: modalSlideIn 0.3s ease-out;
+  font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.delete-modal-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #6b7280;
+  padding: 8px;
+  line-height: 1;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}
+
+.delete-modal-close:hover {
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
+.delete-modal-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.delete-modal-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.delete-modal-title {
+  margin: 0;
+  font-size: 20px;
+  color: #1f2937;
+  font-weight: 600;
+  font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}
+
+.delete-modal-message {
+  color: #6b7280;
+  text-align: center;
+  margin-bottom: 32px;
+  line-height: 1.6;
+  font-size: 15px;
+  font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}
+
+.delete-modal-message strong {
+  color: #1f2937;
+  font-weight: 600;
+}
+
+.delete-modal-actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 60px;
+}
+
+.delete-modal-buttons {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+}
+
+.delete-modal-cancel {
+  flex: 1;
+  padding: 14px 20px;
+  background: #6b7280;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 15px;
+  transition: all 0.2s ease;
+  font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}
+
+.delete-modal-cancel:hover {
+  background: #4b5563;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(107, 114, 128, 0.3);
+}
+
+.delete-modal-confirm {
+  flex: 1;
+  padding: 14px 20px;
+  background: #dc2626;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 15px;
+  transition: all 0.2s ease;
+  font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}
+
+.delete-modal-confirm:hover {
+  background: #b91c1c;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(220, 38, 38, 0.3);
+}
+
+/* Import Styles */
+.import-section {
+  margin: 20px 0;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.subsection-title {
+  margin: 0 0 15px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.import-actions {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 15px;
+}
+
+.import-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: linear-gradient(135deg, #007bff 0%, #6610f2 100%);
+  color: white;
+}
+
+.import-btn:hover {
+  background: linear-gradient(135deg, #0056b3 0%, #520dc2 100%);
+  transform: translateY(-1px);
+}
+
+.import-help {
+  margin: 0;
+  font-size: 13px;
+  color: #666;
+  line-height: 1.4;
+}
+
+/* Export button in map actions */
+.action-btn.export {
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-btn.export:hover:not(:disabled) {
+  background: linear-gradient(135deg, #218838 0%, #1ea085 100%);
+  transform: translateY(-1px);
+}
+
+.action-btn.export:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+
+/* Responsive adjustments for import */
+@media (max-width: 768px) {
+  .import-actions {
+    flex-direction: column;
+  }
+
+  .import-modal {
+    width: 95%;
+    margin: 10px;
   }
 }
 </style> 
