@@ -1190,11 +1190,11 @@ export default {
       const mouseX = event.clientX - rect.left
       const mouseY = event.clientY - rect.top
       
-      // Calculate map coordinates (accounting for scroll and scale)
+      // Calculate map coordinates (use raw coordinates, not scaled)
       const rawX = mouseX + mapCanvas.scrollLeft
       const rawY = mouseY + mapCanvas.scrollTop
-      const x = Math.round(rawX / this.mapScale)
-      const y = Math.round(rawY / this.mapScale)
+      const x = Math.round(rawX)
+      const y = Math.round(rawY)
       
       // Update coordinates for both old and new building creators
       this.buildingForm.x_coordinate = x
@@ -1236,11 +1236,11 @@ export default {
       const mouseX = event.clientX - rect.left
       const mouseY = event.clientY - rect.top
       
-      // Calculate map coordinates (accounting for scroll and scale)
+      // Calculate map coordinates (use raw coordinates, not scaled)
       const rawX = mouseX + mapCanvas.scrollLeft
       const rawY = mouseY + mapCanvas.scrollTop
-      const x = Math.round(rawX / this.mapScale)
-      const y = Math.round(rawY / this.mapScale)
+      const x = Math.round(rawX)
+      const y = Math.round(rawY)
       
       // Always update coordinate preview to follow mouse cursor
       this.coordPreview.x = mouseX

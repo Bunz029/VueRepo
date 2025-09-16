@@ -22,24 +22,50 @@ class MapController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'image' => 'required|image|max:10240',
-            'width' => 'required|numeric',
-            'height' => 'required|numeric'
+        Log::info('Map store request received', [
+            'has_file' => $request->hasFile('image'),
+            'file_size' => $request->hasFile('image') ? $request->file('image')->getSize() : null,
+            'file_mime' => $request->hasFile('image') ? $request->file('image')->getMimeType() : null,
+            'request_data' => $request->except(['image'])
         ]);
 
-        $imagePath = $request->file('image')->store('maps', 'public');
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'image' => 'nullable|image|max:102400', // Increased to 100MB to match PHP configuration
+            'width' => 'required|numeric',
+            'height' => 'required|numeric',
+            'is_published' => 'nullable|in:true,false,1,0'
+        ]);
+
+        $imagePath = null;
+        if ($request->hasFile('image')) {
+            try {
+                $imagePath = $request->file('image')->store('maps', 'public');
+                Log::info('Image stored successfully', ['path' => $imagePath]);
+            } catch (\Exception $e) {
+                Log::error('Image storage failed', [
+                    'error' => $e->getMessage(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine()
+                ]);
+                return response()->json([
+                    'message' => 'The image failed to upload.',
+                    'errors' => ['image' => [$e->getMessage()]]
+                ], 422);
+            }
+        }
 
         $map = Map::create([
             'name' => $request->name,
             'image_path' => $imagePath,
             'width' => $request->width,
             'height' => $request->height,
-            'is_active' => false // New maps are inactive by default
+            'is_active' => false, // New maps are inactive by default
+            'is_published' => filter_var($request->input('is_published', false), FILTER_VALIDATE_BOOLEAN) // Default to unpublished
         ]);
 
-        $map->image_url = asset('storage/' . $map->image_path);
+        $map->image_url = $imagePath ? asset('storage/' . $map->image_path) : null;
+        
         return response()->json($map, 201);
     }
 
